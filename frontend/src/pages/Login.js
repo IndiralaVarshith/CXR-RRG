@@ -1,93 +1,69 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Activity, ArrowLeft } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { Mail, ArrowRight, AlertTriangle } from "lucide-react";
 import axios from "axios";
-import "../auth.css";
+import AuthLayout from "../components/AuthLayout";
+import PasswordInput from "../components/PasswordInput";
+import { useToast } from "../components/Toast";
+import { BACKEND_URL } from "../config";
+import { setUser } from "../lib/auth";
 
-const API_URL = "http://127.0.0.1:5000";
-
-function Login() {
+export default function Login() {
   const nav = useNavigate();
+  const loc = useLocation();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const loginUser = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/api/auth/login`, { email, password })
-        .then((res) => {
-          localStorage.setItem("email", res.data.email);
-          localStorage.setItem("userName", res.data.name || "User"); // Save name
-        });
-      nav("/dashboard");
+      const { data } = await axios.post(`${BACKEND_URL}/api/auth/login`, { email: email.trim(), password });
+      setUser({ email: data.email, name: data.name || (data.role === "doctor" ? "Doctor" : ""), role: data.role });
+      toast("success", "Signed in", `Welcome back${data.name ? `, ${data.name}` : ""}.`);
+      nav(loc.state?.from || "/dashboard", { replace: true });
     } catch (err) {
-      alert("Invalid credentials");
+      if (!err.response) setError(`Can't reach the server at ${BACKEND_URL}. Is the backend running?`);
+      else setError(err.response.data?.error || "Invalid email or password.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <motion.div
-        className="auth-container"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <button className="back-btn" onClick={() => nav('/')}>
-          <ArrowLeft size={20} />
-          Back
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Sign in to your radiology workspace."
+      footer={<>New to CXR-RRG? <Link to="/register">Create an account</Link></>}
+    >
+      <form className="auth-form" onSubmit={submit}>
+        <AnimatePresence>
+          {error && (
+            <motion.div className="auth-error" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+              <AlertTriangle size={16} /> {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div className="field">
+          <label>Email</label>
+          <div className="input-wrap">
+            <Mail size={17} />
+            <input className="input" type="email" placeholder="name@hospital.org" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required autoFocus />
+          </div>
+        </div>
+        <div className="field">
+          <label>Password</label>
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+        </div>
+        <button className="btn btn-primary btn-lg btn-block" disabled={loading} style={{ marginTop: 8 }}>
+          {loading ? <><span className="spinner" /> Signing in…</> : <>Sign in <ArrowRight size={18} /></>}
         </button>
-
-        <div className="auth-header">
-          <Activity className="brand-icon-lg" size={40} />
-          <h2>Welcome back</h2>
-          <p>Enter your credentials to access your workspace</p>
-        </div>
-
-        <form className="auth-form" onSubmit={loginUser}>
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              placeholder="name@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          <button type="submit" className="btn-primary full-width" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          <p>
-            Don't have an account?{" "}
-            <span className="link-text" onClick={() => nav("/register")}>
-              Create one
-            </span>
-          </p>
-        </div>
-      </motion.div>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }
-
-export default Login;

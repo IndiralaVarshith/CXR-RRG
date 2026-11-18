@@ -1,314 +1,251 @@
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { FileText, Download, Calendar, Search, Trash2, Trash, User } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import axios from "axios";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import {
+  Search, Trash2, Download, Eye, Calendar, Hash, FileStack, ShieldAlert, CheckCircle2, CalendarDays, Plus, RefreshCw, ImageOff, Inbox,
+} from "lucide-react";
 import Navbar from "../components/Navbar";
-import "./history.css";
 import ReportModal from "../components/ReportModal";
+import ConfirmDialog from "../components/ConfirmDialog";
+import { useToast } from "../components/Toast";
+import { BACKEND_URL, imageUrl } from "../config";
+import { getUser } from "../lib/auth";
+import { label, RISK, riskFrom } from "../lib/pathologies";
+import { downloadReportPDF } from "../lib/pdf";
+import "./history.css";
 
-const API_URL = "http://127.0.0.1:5000";
+const FILTERS = [
+  { id: "all", label: "All" },
+  { id: "flagged", label: "Flagged" },
+  { id: "clear", label: "No findings" },
+];
 
-function History() {
-    const [reports, setReports] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedReport, setSelectedReport] = useState(null); // For modal
-    const nav = useNavigate();
-    const email = localStorage.getItem("email");
-
-    const fetchHistory = useCallback(async () => {
-        try {
-            const res = await axios.get(`${API_URL}/api/history?email=${email}`);
-            setReports(res.data);
-        } catch (err) {
-            console.error("Failed to fetch history", err);
-        } finally {
-            setLoading(false);
-        }
-    }, [email]);
-
-    useEffect(() => {
-        if (!email) {
-            nav("/login");
-            return;
-        }
-        fetchHistory();
-    }, [email, nav, fetchHistory]);
-
-    const deleteReport = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this report?")) return;
-        try {
-            await axios.delete(`${API_URL}/api/history/${id}`);
-            setReports(reports.filter((r) => r._id !== id));
-        } catch (err) {
-            console.error("Failed to delete report", err);
-            alert("Failed to delete report");
-        }
-    };
-
-    const clearHistory = async () => {
-        if (!window.confirm("Are you sure you want to clear ALL history? This cannot be undone.")) return;
-        try {
-            await axios.delete(`${API_URL}/api/history/clear/all?email=${email}`);
-            setReports([]);
-        } catch (err) {
-            console.error("Failed to clear history", err);
-            alert("Failed to clear history");
-        }
-    };
-
-    const downloadPDF = async (report) => {
-        const doc = new jsPDF();
-
-        // Header
-        doc.setFontSize(20);
-        doc.setTextColor(255, 77, 0); // Accent color
-        doc.text("CXR-RRG Report", 14, 22);
-
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
-
-        // Patient/Report Info
-        autoTable(doc, {
-            startY: 40,
-            head: [['Field', 'Value']],
-            body: [
-                ['Report ID', report._id],
-                ['Patient Name', report.patientName],
-                ['ECT Number', report.ectNumber || "N/A"],
-                ['User/Doctor', report.userName || "Unknown"],
-                ['User Email', report.userEmail],
-                ['Date', new Date(report.createdAt).toLocaleString()],
-                ['Confidence', `${(report.aiReport.confidence * 100).toFixed(1)}%`],
-            ],
-            theme: 'grid',
-            headStyles: { fillColor: [255, 77, 0] },
-        });
-
-        let currentY = doc.lastAutoTable.finalY + 15;
-
-        // --- Add Image Logic ---
-        if (report.imagePath) {
-            try {
-                // 1. Construct URL
-                const p = String(report.imagePath || '');
-                const s = p.replace(/\\/g, '/');
-                const idx = s.indexOf('uploads/');
-                const rel = idx !== -1 ? s.slice(idx) : 'uploads/' + s.split('/').slice(-1)[0];
-                const imgUrl = `${API_URL}/${rel.replace(/^\/+/, '')}`;
-
-                // 2. Fetch Blob
-                const res = await fetch(imgUrl);
-                if (!res.ok) throw new Error("Failed to fetch image");
-                const blob = await res.blob();
-
-                // 3. Convert to DataURL
-                const base64Img = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
-
-                // 4. Add to PDF
-                const MAX_WIDTH = 100;
-                const MAX_HEIGHT = 100;
-
-                const imgProps = doc.getImageProperties(base64Img);
-                let imgWidth = imgProps.width;
-                let imgHeight = imgProps.height;
-
-                const ratio = Math.min(MAX_WIDTH / imgWidth, MAX_HEIGHT / imgHeight);
-                imgWidth *= ratio;
-                imgHeight *= ratio;
-
-                doc.addImage(base64Img, 'JPEG', 14, currentY, imgWidth, imgHeight);
-                currentY += imgHeight + 15;
-
-            } catch (imgErr) {
-                console.error("PDF Image Error:", imgErr);
-            }
-        }
-        // -----------------------
-
-        // --- Helper function for text pagination ---
-        const addTextWithPagination = (text, yPos, fontSize = 12) => {
-            doc.setFontSize(fontSize);
-            const lines = doc.splitTextToSize(text || "", 180);
-            const lineHeight = fontSize * 0.3527 * 1.5; // convert pt to mm (approx) and add spacing
-
-            for (let i = 0; i < lines.length; i++) {
-                if (yPos > 280) { // Check for bottom of page
-                    doc.addPage();
-                    yPos = 20; // Reset Y to top margin
-                }
-                doc.text(lines[i], 14, yPos);
-                yPos += lineHeight;
-            }
-            return yPos;
-        };
-        // ------------------------------------------
-
-        // Findings
-        doc.setFontSize(14);
-        doc.setTextColor(0);
-
-        if (currentY > 270) {
-            doc.addPage();
-            currentY = 20;
-        }
-        doc.text("AI Findings", 14, currentY);
-        currentY += 10;
-
-        // Write Findings
-        currentY = addTextWithPagination(report.aiReport.finding || "No findings.", currentY, 12);
-
-        // Notes
-        if (report.notes) {
-            currentY += 10;
-
-            if (currentY > 270) {
-                doc.addPage();
-                currentY = 20;
-            }
-            doc.setFontSize(14);
-            doc.text("Clinical Notes", 14, currentY);
-            currentY += 10;
-
-            // Write Notes
-            currentY = addTextWithPagination(report.notes, currentY, 12);
-        }
-
-        doc.save(`report-${report._id.slice(-6)}.pdf`);
-    };
-
-    const filteredReports = reports.filter(r =>
-        r.aiReport.finding.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (r.notes && r.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (r.patientName && r.patientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (r.ectNumber && r.ectNumber.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-
-    return (
-        <div className="history-page">
-            <Navbar />
-
-            <div className="history-container">
-                <header className="history-header">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                    >
-                        <h1>Report History</h1>
-                        <p>Access and manage your past diagnostic reports.</p>
-                    </motion.div>
-                    {reports.length > 0 && (
-                        <button className="clear-btn" onClick={clearHistory}>
-                            <Trash2 size={18} />
-                            Clear History
-                        </button>
-                    )}
-                </header>
-
-                <div className="history-controls">
-                    <div className="search-bar">
-                        <Search size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search findings, notes, or patient name..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                {loading ? (
-                    <div className="loading-state">Loading history...</div>
-                ) : filteredReports.length === 0 ? (
-                    <div className="empty-history">
-                        <FileText size={48} />
-                        <h3>No reports found</h3>
-                        <p>Upload an X-ray in the dashboard to generate your first report.</p>
-                        <button className="btn-primary" onClick={() => nav('/dashboard')}>
-                            Go to Dashboard
-                        </button>
-                    </div>
-                ) : (
-                    <div className="reports-grid">
-                        {filteredReports.map((report, index) => (
-                            <motion.div
-                                key={report._id}
-                                className="report-card-mini"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                            >
-                                <div className="card-header">
-                                    <span className="date-badge">
-                                        <Calendar size={14} />
-                                        {new Date(report.createdAt).toLocaleDateString()}
-                                    </span>
-                                    <span className="confidence-pill">
-                                        {(report.aiReport.confidence * 100).toFixed(0)}% Conf.
-                                    </span>
-                                </div>
-
-                                <div className="card-body">
-                                    <h5
-                                        className="patient-name-link"
-                                        onClick={() => setSelectedReport(report)}
-                                        title="Click to view full report"
-                                        style={{ fontSize: '1.1rem', cursor: 'pointer' }}
-                                    >
-                                        <User size={16} style={{ marginRight: '8px' }} />
-                                        {report.patientName || "Unknown Patient"}
-                                        {report.ectNumber && <span style={{ fontSize: '0.9rem', color: '#a1a1aa', marginLeft: '8px' }}>({report.ectNumber})</span>}
-                                    </h5>
-                                    <div style={{ fontSize: '0.8rem', color: '#71717a', marginTop: '0.2rem', marginLeft: '24px' }}>
-                                        Uploaded by: <span style={{ color: '#e4e4e7' }}>{report.userName && report.userName !== "Unknown User" ? report.userName : report.userEmail.split('@')[0]}</span>
-                                    </div>
-                                    <p style={{ fontSize: '0.85rem', color: '#a1a1aa', marginTop: '0.5rem' }}>
-                                        Click to view report details
-                                    </p>
-                                </div>
-
-                                <div className="card-footer">
-                                    <button
-                                        className="download-btn"
-                                        onClick={() => downloadPDF(report)}
-                                    >
-                                        <Download size={16} />
-                                        Download PDF
-                                    </button>
-                                    <button
-                                        className="delete-btn"
-                                        onClick={() => deleteReport(report._id)}
-                                        title="Delete Report"
-                                    >
-                                        <Trash size={16} />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-
-            {selectedReport && (
-                <ReportModal
-                    report={selectedReport}
-                    onClose={() => setSelectedReport(null)}
-                    API_URL={API_URL}
-                />
-            )}
-        </div>
-    );
+function Thumb({ src }) {
+  const [failed, setFailed] = useState(false);
+  return failed ? (
+    <div className="h-thumb missing"><ImageOff size={22} /></div>
+  ) : (
+    <div className="h-thumb"><img src={src} alt="" loading="lazy" onError={() => setFailed(true)} /></div>
+  );
 }
 
-export default History;
+export default function History() {
+  const toast = useToast();
+  const nav = useNavigate();
+  const user = getUser();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState("new");
+  const [open, setOpen] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await axios.get(`${BACKEND_URL}/api/history`, { params: { email: user.email } });
+      setReports(data);
+    } catch (err) {
+      setError(err.response?.data?.error || `Can't reach the backend at ${BACKEND_URL}.`);
+    } finally {
+      setLoading(false);
+    }
+  }, [user.email]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const isFlagged = (r) => {
+    const risk = riskFrom(r.aiReport);
+    return risk ? risk !== "low" : /suspected|abnormal/i.test(r.aiReport?.finding || "");
+  };
+
+  const stats = useMemo(() => {
+    const week = Date.now() - 7 * 864e5;
+    const flagged = reports.filter(isFlagged).length;
+    return {
+      total: reports.length,
+      flagged,
+      clear: reports.length - flagged,
+      week: reports.filter((r) => new Date(r.createdAt).getTime() > week).length,
+    };
+  }, [reports]);
+
+  const shown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    let list = reports.filter((r) => {
+      if (filter === "flagged" && !isFlagged(r)) return false;
+      if (filter === "clear" && isFlagged(r)) return false;
+      if (!s) return true;
+      return [r.patientName, r.ectNumber, r.notes, r.aiReport?.finding, ...(r.aiReport?.findings || []).map(label)]
+        .filter(Boolean).some((v) => String(v).toLowerCase().includes(s));
+    });
+    list = [...list].sort((a, b) => (sort === "new" ? -1 : 1) * (new Date(a.createdAt) - new Date(b.createdAt)));
+    return list;
+  }, [reports, q, filter, sort]);
+
+  const doDelete = async () => {
+    setBusy(true);
+    try {
+      if (confirm.type === "all") {
+        await axios.delete(`${BACKEND_URL}/api/history/clear/all`, { params: { email: user.email } });
+        setReports([]);
+        toast("success", "History cleared");
+      } else {
+        await axios.delete(`${BACKEND_URL}/api/history/${confirm.report._id}`);
+        setReports((rs) => rs.filter((x) => x._id !== confirm.report._id));
+        toast("success", "Report deleted");
+      }
+      setConfirm(null);
+    } catch {
+      toast("error", "Delete failed", "Could not reach the backend.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pdf = (r) =>
+    downloadReportPDF({
+      id: r._id, patientName: r.patientName, ectNumber: r.ectNumber, notes: r.notes, reportText: r.aiReport?.finding,
+      userName: r.userName, userEmail: r.userEmail, createdAt: r.createdAt, probabilities: r.aiReport?.probabilities,
+      findings: r.aiReport?.findings, risk: riskFrom(r.aiReport), model: r.aiReport?.model, image: imageUrl(r.imagePath),
+    }).then(() => toast("success", "PDF exported"));
+
+  return (
+    <div className="page">
+      <Navbar />
+      <main className="container hist">
+        <div className="dash-head">
+          <div>
+            <span className="eyebrow">Patient history</span>
+            <h1>Saved reports</h1>
+          </div>
+          <div className="dash-status">
+            <button className="icon-btn" onClick={load} title="Refresh"><RefreshCw size={16} /></button>
+            {reports.length > 0 && (
+              <button className="btn btn-danger btn-sm" onClick={() => setConfirm({ type: "all" })}><Trash2 size={15} /> Clear all</button>
+            )}
+            <button className="btn btn-primary btn-sm" onClick={() => nav("/dashboard")}><Plus size={15} /> New analysis</button>
+          </div>
+        </div>
+
+        <div className="stats">
+          {[
+            { icon: FileStack, v: stats.total, l: "Total studies", tone: "" },
+            { icon: ShieldAlert, v: stats.flagged, l: "Flagged for review", tone: "danger" },
+            { icon: CheckCircle2, v: stats.clear, l: "No acute findings", tone: "ok" },
+            { icon: CalendarDays, v: stats.week, l: "Last 7 days", tone: "" },
+          ].map(({ icon: Icon, v, l, tone }, i) => (
+            <motion.div key={l} className={`panel stat ${tone}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+              <span className="stat-ic"><Icon size={18} /></span>
+              <div className="stat-v">{loading ? "–" : v}</div>
+              <div className="stat-l faint">{l}</div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="h-controls">
+          <div className="input-wrap h-search">
+            <Search size={17} />
+            <input className="input" placeholder="Search patient, reference, finding or notes…" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <div className="seg">
+            {FILTERS.map((f) => (
+              <button key={f.id} className={filter === f.id ? "on" : ""} onClick={() => setFilter(f.id)}>{f.label}</button>
+            ))}
+          </div>
+          <div className="seg">
+            <button className={sort === "new" ? "on" : ""} onClick={() => setSort("new")}>Newest</button>
+            <button className={sort === "old" ? "on" : ""} onClick={() => setSort("old")}>Oldest</button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="h-grid">{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="skeleton" style={{ height: 300 }} />)}</div>
+        ) : error ? (
+          <div className="panel panel-pad h-empty">
+            <ShieldAlert size={30} style={{ color: "var(--danger)" }} />
+            <h3>Couldn't load history</h3>
+            <p className="muted">{error}</p>
+            <button className="btn btn-ghost" onClick={load}><RefreshCw size={16} /> Retry</button>
+          </div>
+        ) : shown.length === 0 ? (
+          <div className="panel panel-pad h-empty">
+            <Inbox size={34} style={{ color: "var(--accent)" }} />
+            <h3>{reports.length ? "No matching reports" : "No reports yet"}</h3>
+            <p className="muted">{reports.length ? "Try a different search or filter." : "Analyze your first chest X-ray and save it to see it here."}</p>
+            {!reports.length && <button className="btn btn-primary" onClick={() => nav("/dashboard")}><Plus size={16} /> New analysis</button>}
+          </div>
+        ) : (
+          <div className="h-grid">
+              {shown.map((r, i) => {
+                const risk = riskFrom(r.aiReport);
+                const info = risk ? RISK[risk] : null;
+                const findings = r.aiReport?.findings || [];
+                return (
+                  <motion.article
+                    key={r._id}
+                    className="panel h-card"
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i, 8) * 0.04 }}
+                  >
+                    <button className="h-media" onClick={() => setOpen(r)} aria-label="Open report">
+                      <Thumb src={imageUrl(r.imagePath)} />
+                      {info && <span className={`chip ${info.tone} h-risk`}><span className="dot" /> {info.label}</span>}
+                      <span className="h-view"><Eye size={16} /> View report</span>
+                    </button>
+                    <div className="h-body">
+                      <h3 title={r.patientName}>{r.patientName || "Unknown patient"}</h3>
+                      <div className="h-meta mono faint">
+                        <span><Calendar size={12} /> {new Date(r.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}</span>
+                        {r.ectNumber && <span><Hash size={12} /> {r.ectNumber}</span>}
+                      </div>
+                      <div className="finding-chips h-findings">
+                        {findings.length ? findings.slice(0, 3).map((f) => <span key={f} className="chip danger">{label(f)}</span>)
+                          : risk === "low" ? <span className="chip ok">No acute findings</span>
+                          : <span className="chip neutral">Legacy report</span>}
+                        {findings.length > 3 && <span className="chip neutral">+{findings.length - 3}</span>}
+                      </div>
+                    </div>
+                    <div className="h-actions">
+                      <button className="btn btn-ghost btn-sm" onClick={() => setOpen(r)}><Eye size={15} /> Open</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => pdf(r)}><Download size={15} /> PDF</button>
+                      <button className="icon-btn danger" onClick={() => setConfirm({ type: "one", report: r })} title="Delete"><Trash2 size={15} /></button>
+                    </div>
+                  </motion.article>
+                );
+              })}
+          </div>
+        )}
+      </main>
+
+      <AnimatePresence>
+        {open && (
+          <ReportModal
+            key={open._id}
+            report={open}
+            onClose={() => setOpen(null)}
+            onUpdated={(u) => setReports((rs) => rs.map((x) => (x._id === u._id ? u : x)))}
+          />
+        )}
+      </AnimatePresence>
+
+      <ConfirmDialog
+        open={!!confirm}
+        busy={busy}
+        title={confirm?.type === "all" ? "Clear all history?" : "Delete this report?"}
+        message={confirm?.type === "all"
+          ? `This permanently deletes all ${reports.length} saved reports. This cannot be undone.`
+          : `The report for ${confirm?.report?.patientName || "this patient"} will be permanently deleted.`}
+        confirmLabel={confirm?.type === "all" ? "Clear all" : "Delete"}
+        onConfirm={doDelete}
+        onCancel={() => !busy && setConfirm(null)}
+      />
+    </div>
+  );
+}

@@ -41,6 +41,17 @@ if (process.env.MONGO_URI) {
   console.warn("⚠️  MONGO_URI not set. Skipping MongoDB connection (server will run without DB).");
 }
 
+// Fail fast with a clear message when the database is down (instead of a 10s hang)
+app.use("/api", (req, res, next) => {
+  const doctorLogin = req.path === "/auth/login" && req.body?.email === process.env.DOCTOR_EMAIL;
+  if (mongoose.connection.readyState !== 1 && !doctorLogin) {
+    return res.status(503).json({
+      error: "Database not connected. Check MONGO_URI in backend/.env and that MongoDB is running.",
+    });
+  }
+  next();
+});
+
 // ---------------- AUTH ROUTES ----------------
 
 // POST /api/auth/register  (only user registration)
@@ -160,10 +171,23 @@ app.post("/api/save-report", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "Image file is required to save report" });
     }
 
+    // Structured model output sent by the dashboard (findings, probabilities, risk)
+    let ai = {};
+    try {
+      ai = req.body.aiData ? JSON.parse(req.body.aiData) : {};
+    } catch (e) {
+      ai = {};
+    }
+    const probs = ai.probabilities || {};
+    const topProb = Object.values(probs).length ? Math.max(...Object.values(probs)) : null;
+
     const aiReport = {
-      model: "MedGamma-extern",
+      model: ai.model || "cxr-rrg-ml",
       finding: reportText || "",
-      confidence: null,
+      findings: Array.isArray(ai.findings) ? ai.findings : [],
+      probabilities: probs,
+      risk: ai.risk || null,
+      confidence: topProb,
     };
 
     const report = await Report.create({

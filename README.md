@@ -43,11 +43,16 @@ The app runs three local services:
 
 ```json
 {
-  "report": "AI SCREENING RESULT ...",
+  "report": "FINDINGS\n- Effusion suspected (71% probability) ...",
   "findings": ["Effusion", "Cardiomegaly"],
-  "probabilities": {"Effusion": 0.71, "Cardiomegaly": 0.64, "...": 0.1}
+  "probabilities": {"Effusion": 0.71, "Cardiomegaly": 0.64, "...": 0.1},
+  "heatmaps": {"Effusion": "data:image/jpeg;base64,..."},
+  "risk": "high | moderate | low",
+  "inference_ms": 140
 }
 ```
+
+`heatmaps` are Class Activation Maps showing *where* the model looked for each of the top 4 findings.
 
 - See [`ml/README.md`](ml/README.md) for model details and evaluation results
   (including why our fine-tuned Qwen2-VL model is not used by default).
@@ -136,7 +141,9 @@ Use `backend/.env.example` as reference and create `backend/.env`:
 
 ```env
 PORT=5000
-MONGO_URI=mongodb+srv://<username>:<password>@<cluster>/<dbName>
+# Local MongoDB (recommended): brew services start mongodb-community@7.0
+MONGO_URI=mongodb://127.0.0.1:27017/cxr-rrg
+# or Atlas: mongodb+srv://<username>:<password>@<cluster>/<dbName>
 DOCTOR_EMAIL=doctor@example.com
 DOCTOR_PASSWORD=change-me
 JWT_SECRET=replace-with-strong-random-secret
@@ -207,6 +214,13 @@ npm start
 Expected behavior:
 - Browser opens at `http://localhost:3000`
 - Landing page loads
+
+### Quick test
+
+1. Open `http://localhost:3000` and click **Get started** to create an account.
+2. In **Analyze**, click **Try sample X-ray**, then **Run AI analysis**.
+3. Click a finding (for example *Nodule*) to see its heatmap. Edit the report, then **Save to history** or export a **PDF**.
+4. Open **History** to search, filter, edit or delete saved reports.
 
 ### Option B: If AI Inference Is Hosted Remotely (Colab/ngrok, `CXR_Model.ipynb`)
 
