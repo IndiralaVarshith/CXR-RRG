@@ -1,475 +1,419 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Upload, FileText, Activity, CheckCircle, Download } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import axios from "axios";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import {
+  UploadCloud, ScanLine, User, Hash, NotebookPen, Sparkles, Save, Download, RotateCcw, Sun, Contrast, ZoomIn,
+  ZoomOut, Layers, Image as ImageIcon, Timer, Cpu, CheckCircle2, AlertTriangle, ShieldAlert, FlaskConical, FileImage,
+  History as HistoryIcon, SunMoon,
+} from "lucide-react";
 import Navbar from "../components/Navbar";
-import "../dashboard.css";
+import ProbBars from "../components/ProbBars";
+import RiskGauge from "../components/RiskGauge";
+import { useToast } from "../components/Toast";
+import { BACKEND_URL, ML_URL, THRESHOLD } from "../config";
+import { getUser } from "../lib/auth";
+import { label, PATHOLOGIES, RISK, riskFrom } from "../lib/pathologies";
+import { downloadReportPDF } from "../lib/pdf";
+import "./dashboard.css";
 
-// ML server (ml/server.py). Override with REACT_APP_ML_URL in frontend/.env
-const API_URL = process.env.REACT_APP_ML_URL || "http://127.0.0.1:8000";
-// Node/Express backend (backend/server.js). Override with REACT_APP_BACKEND_URL
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:5000";
+const STAGES = ["Preprocessing image", "Running DenseNet-121", "Calibrating probabilities", "Computing attention maps", "Drafting report"];
+const ACCEPT = ["image/png", "image/jpeg"];
 
-function UserDashboard() {
+function useMlHealth() {
+  const [status, setStatus] = useState("checking");
+  useEffect(() => {
+    let alive = true;
+    const check = () =>
+      axios.get(`${ML_URL}/health`, { timeout: 4000 })
+        .then(() => alive && setStatus("online"))
+        .catch(() => alive && setStatus("offline"));
+    check();
+    const t = setInterval(check, 10000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+  return status;
+}
+
+export default function UserDashboard() {
+  const toast = useToast();
+  const nav = useNavigate();
+  const user = getUser();
+  const ml = useMlHealth();
+  const inputRef = useRef(null);
+
   const [file, setFile] = useState(null);
-  const [notes, setNotes] = useState("");
+  const [preview, setPreview] = useState("");
+  const [drag, setDrag] = useState(false);
   const [patientName, setPatientName] = useState("");
   const [ectNumber, setEctNumber] = useState("");
-  const [result, setResult] = useState(null);
+  const [notes, setNotes] = useState("");
+
   const [loading, setLoading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [stage, setStage] = useState(0);
+  const [result, setResult] = useState(null);
+  const [reportText, setReportText] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [mode, setMode] = useState("original");
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState(null);
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
+  const [bright, setBright] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [invert, setInvert] = useState(false);
+  const [zoom, setZoom] = useState(1);
+
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+
+  const resetView = () => { setBright(100); setContrast(100); setInvert(false); setZoom(1); };
+
+  const pickFile = useCallback((f) => {
+    if (!f) return;
+    if (!ACCEPT.includes(f.type)) {
+      toast("error", "Unsupported file", "Please upload a PNG or JPG chest X-ray.");
+      return;
     }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
+    if (f.size > 25 * 1024 * 1024) {
+      toast("error", "File too large", "Maximum size is 25 MB.");
+      return;
     }
-  };
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    setResult(null);
+    setReportText("");
+    setSavedId(null);
+    setSelected(null);
+    setMode("original");
+    resetView();
+  }, [toast]);
 
-  const upload = async () => {
-    if (!file) return alert("Please choose an image");
-    setLoading(true);
-
-    const fd = new FormData();
-    fd.append("image", file);
-    fd.append("notes", notes);
-    fd.append("patientName", patientName);
-    fd.append("ectNumber", ectNumber);
-    fd.append("email", localStorage.getItem("email") || "unknown@user.com");
-
+  const loadSample = async () => {
     try {
-      // Send to the local ML server which exposes `/predict`
-      console.log(`Uploading to: ${API_URL}/predict`);
-      const res = await axios.post(`${API_URL}/predict`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-        timeout: 120000, // 120 seconds for model inference
-      });
+      const blob = await fetch("/assets/hero-xray.jpg").then((r) => r.blob());
+      pickFile(new File([blob], "sample-indiana-1000.jpg", { type: "image/jpeg" }));
+      if (!patientName) setPatientName("Sample Patient");
+      if (!ectNumber) setEctNumber("IU-1000");
+    } catch {
+      toast("error", "Could not load the sample image");
+    }
+  };
 
-      // ML server returns { report, findings, probabilities }
-      const reportText = res.data?.report || "";
-
-      setResult({
-        reportText,
-        // Use a local preview for the uploaded image
-        imagePreview: URL.createObjectURL(file),
-      });
-    } catch (error) {
-      console.error("Upload error full object:", error);
-      console.error("Error code:", error?.code);
-      console.error("Error response:", error?.response);
-      console.error("API_URL being used:", API_URL);
-
-      let serverMsg = "Network Error";
-      if (error?.response?.data?.error) {
-        serverMsg = error.response.data.error;
-      } else if (error?.response?.data) {
-        serverMsg = JSON.stringify(error.response.data);
-      } else if (error?.code === "ECONNABORTED") {
-        serverMsg = "Request timeout (120s). Is the ML server (ml/server.py) running?";
-      } else if (error?.code === "ERR_NETWORK") {
-        serverMsg = `Network Error: ML server unreachable at ${API_URL}. Start it with: python ml/server.py`;
-      } else if (error?.message) {
-        serverMsg = error.message;
-      }
-
-      alert(`Analysis failed: ${serverMsg}`);
+  const analyze = async () => {
+    if (!file) return toast("error", "No image", "Upload a chest X-ray first.");
+    setLoading(true);
+    setResult(null);
+    setStage(0);
+    const timer = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 420);
+    const started = Date.now();
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const { data } = await axios.post(`${ML_URL}/predict`, fd, { timeout: 120000 });
+      // let the scan animation breathe so the result doesn't "pop"
+      const wait = Math.max(0, 1600 - (Date.now() - started));
+      await new Promise((r) => setTimeout(r, wait));
+      setResult(data);
+      setReportText(data.report || "");
+      const first = Object.keys(data.heatmaps || {}).sort((a, b) => data.probabilities[b] - data.probabilities[a])[0] || null;
+      setSelected(first);
+      // only open the heatmap by default when something was actually flagged
+      setMode(first && data.findings?.length ? "heatmap" : "original");
+      setSavedId(null);
+      const n = data.findings?.length || 0;
+      toast(n ? "info" : "success", "Analysis complete", n ? `${n} finding${n > 1 ? "s" : ""} above threshold.` : "No pathology above the alert threshold.");
+    } catch (err) {
+      const msg = err.response?.data?.error
+        || (err.code === "ECONNABORTED" ? "The request timed out." : `ML server unreachable at ${ML_URL}. Start it with: python ml/server.py`);
+      toast("error", "Analysis failed", msg);
     } finally {
+      clearInterval(timer);
       setLoading(false);
     }
   };
 
-
-  const saveReport = async () => {
-    if (!result?.reportText) return alert("No report to save");
-
-    if (!patientName.trim()) return alert("Please enter a Patient Name before saving.");
-
-    const fd = new FormData();
-    fd.append("image", file); // Re-upload the image file to save it locally in backend
-    fd.append("notes", notes);
-    fd.append("patientName", patientName);
-    fd.append("ectNumber", ectNumber);
-    const storedUserName = localStorage.getItem("userName");
-    const userEmail = localStorage.getItem("email") || "unknown@user.com";
-    const displayName = (storedUserName && storedUserName !== "User" && storedUserName !== "Unknown User")
-      ? storedUserName
-      : userEmail.split('@')[0];
-
-    fd.append("email", userEmail);
-    fd.append("userName", displayName); // Send User Name or Email Prefix
-    fd.append("reportText", result.reportText);
-
+  const save = async () => {
+    if (!result) return;
+    if (!patientName.trim()) return toast("error", "Patient name required", "Enter a patient name before saving.");
+    setSaving(true);
     try {
-      await axios.post(`${BACKEND_URL}/api/save-report`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      alert("Report saved to history successfully!");
+      const fd = new FormData();
+      fd.append("image", file);
+      fd.append("patientName", patientName.trim());
+      fd.append("ectNumber", ectNumber.trim());
+      fd.append("notes", notes);
+      fd.append("email", user.email);
+      fd.append("userName", user.name);
+      fd.append("reportText", reportText);
+      fd.append("aiData", JSON.stringify({
+        findings: result.findings, probabilities: result.probabilities, risk: result.risk || riskFrom(result), model: result.model,
+      }));
+      const { data } = await axios.post(`${BACKEND_URL}/api/save-report`, fd);
+      setSavedId(data.report?._id || "saved");
+      toast("success", "Report saved", "It's now in the patient history.");
     } catch (err) {
-      console.error("Save error:", err);
-      alert("Failed to save report to history.");
+      toast("error", "Save failed", err.response?.data?.error || `Backend unreachable at ${BACKEND_URL}.`);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const downloadPDF = async (reportData) => {
-    const doc = new jsPDF();
+  const pdf = () =>
+    downloadReportPDF({
+      id: savedId && savedId !== "saved" ? savedId : null,
+      patientName, ectNumber, notes, reportText,
+      userName: user.name, userEmail: user.email, createdAt: Date.now(),
+      probabilities: result?.probabilities, findings: result?.findings, risk: result?.risk, model: result?.model,
+      image: file, heatmap: selected ? result?.heatmaps?.[selected] : null, heatmapLabel: selected,
+    }).then(() => toast("success", "PDF exported"));
 
-    // Use reportData or fallback to current result state
-    const data = reportData || {
-      _id: "Unsaved",
-      userEmail: localStorage.getItem("email"),
-      createdAt: new Date(),
-      reportText: result?.reportText || "",
-      notes: notes,
-    };
-
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(255, 77, 0); // Accent color
-    doc.text("CXR-RRG Report", 14, 22);
-
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
-
-    // Patient/Report Info
-    autoTable(doc, {
-      startY: 40,
-      head: [['Field', 'Value']],
-      body: [
-        ['Report ID', data._id || "Pending Save"],
-        ['Patient Name', patientName || "Unknown"],
-        ['ECT Number', ectNumber || "N/A"],
-        ['User/Doctor', data.userName || localStorage.getItem("userName") || "Unknown"],
-        ['User Email', data.userEmail || "Unknown"],
-        ['Date', new Date(data.createdAt || Date.now()).toLocaleString()],
-        ['Confidence', `N/A`],
-      ],
-      theme: 'grid',
-      headStyles: { fillColor: [255, 77, 0] },
-    });
-
-    let currentY = doc.lastAutoTable.finalY + 15;
-
-    // --- Add X-Ray Image ---
-    if (file) {
-      try {
-        const base64Img = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        // Calculate available width/height
-        const MAX_WIDTH = 100; // max width in mm
-        const MAX_HEIGHT = 100; // max height in mm
-
-        const imgProps = doc.getImageProperties(base64Img);
-        let imgWidth = imgProps.width;
-        let imgHeight = imgProps.height;
-
-        // Scale logic
-        const ratio = Math.min(MAX_WIDTH / imgWidth, MAX_HEIGHT / imgHeight);
-        imgWidth = imgWidth * ratio;
-        imgHeight = imgHeight * ratio;
-
-        doc.addImage(base64Img, 'JPEG', 14, currentY, imgWidth, imgHeight);
-        currentY += imgHeight + 15;
-      } catch (err) {
-        console.error("Error adding image to PDF:", err);
-      }
-    }
-    // -----------------------
-
-    // --- Helper function for text pagination ---
-    const addTextWithPagination = (text, yPos, fontSize = 12) => {
-      doc.setFontSize(fontSize);
-      const lines = doc.splitTextToSize(text || "", 180);
-      const lineHeight = fontSize * 0.3527 * 1.5; // convert pt to mm (approx) and add spacing
-
-      for (let i = 0; i < lines.length; i++) {
-        if (yPos > 280) { // Check for bottom of page
-          doc.addPage();
-          yPos = 20; // Reset Y to top margin
-        }
-        doc.text(lines[i], 14, yPos);
-        yPos += lineHeight;
-      }
-      return yPos;
-    };
-    // ------------------------------------------
-
-    // Findings
-    doc.setFontSize(14);
-    doc.setTextColor(0);
-
-    if (currentY > 270) {
-      doc.addPage();
-      currentY = 20;
-    }
-    doc.text("AI Findings", 14, currentY);
-    currentY += 10;
-
-    // Write Findings
-    currentY = addTextWithPagination(data.reportText || "No report returned.", currentY, 12);
-
-    // Notes
-    if (data.notes) {
-      currentY += 10; // Spacing before notes header
-
-      if (currentY > 270) {
-        doc.addPage();
-        currentY = 20;
-      }
-      doc.setFontSize(14);
-      doc.text("Clinical Notes", 14, currentY);
-      currentY += 10;
-
-      // Write Notes
-      currentY = addTextWithPagination(data.notes, currentY, 12);
-    }
-
-    doc.save(`report-${(data._id || "unsaved").slice(-6)}.pdf`);
+  const newAnalysis = () => {
+    setFile(null); setPreview(""); setResult(null); setReportText(""); setSavedId(null);
+    setPatientName(""); setEctNumber(""); setNotes(""); setSelected(null); resetView();
   };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDrag(false);
+    pickFile(e.dataTransfer.files?.[0]);
+  };
+
+  const risk = result ? RISK[result.risk || riskFrom(result)] : null;
+  const peak = result ? Math.max(...Object.values(result.probabilities)) : 0;
+  const heatKeys = Object.keys(result?.heatmaps || {}).sort((a, b) => result.probabilities[b] - result.probabilities[a]);
+  const viewSrc = mode === "heatmap" && selected && result?.heatmaps?.[selected] ? result.heatmaps[selected] : preview;
+  const filter = `brightness(${bright}%) contrast(${contrast}%) ${invert ? "invert(1)" : ""}`;
 
   return (
-    <div className="dashboard-page">
+    <div className="page">
       <Navbar />
+      <main className="container dash">
+        {/* header */}
+        <div className="dash-head">
+          <div>
+            <span className="eyebrow">Analysis workspace</span>
+            <h1>Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}, {/^(dr|prof)\.?\s/i.test(user.name) ? user.name : user.name.split(" ")[0]}</h1>
+          </div>
+          <div className="dash-status">
+            <span className={`chip ${ml === "online" ? "ok" : ml === "offline" ? "danger" : "neutral"}`}>
+              <span className="dot pulse" /> ML engine {ml}
+            </span>
+            <span className="chip neutral mono"><Cpu size={13} /> DenseNet-121</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => nav("/history")}><HistoryIcon size={15} /> History</button>
+          </div>
+        </div>
 
-      <div className="dashboard-container">
-        <header className="dashboard-header">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h1>New Analysis</h1>
-            <p>Upload a chest X-ray to generate an AI-powered diagnostic report.</p>
+        {ml === "offline" && (
+          <motion.div className="offline-banner" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
+            <AlertTriangle size={18} />
+            <div>
+              <b>The ML engine isn't running.</b> Start it in a terminal:
+              <code>cd cxr-rrg && ../.venv/bin/python ml/server.py</code>
+            </div>
           </motion.div>
-        </header>
+        )}
 
-        <div className="dashboard-grid">
-          <motion.div
-            className="upload-section"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <div
-              className={`upload-zone ${dragActive ? 'active' : ''} ${file ? 'has-file' : ''}`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <input
-                type="file"
-                id="file-upload"
-                className="hidden-input"
-                onChange={(e) => setFile(e.target.files[0])}
-                accept="image/*"
-              />
+        <div className="dash-grid">
+          {/* ===== LEFT: viewer ===== */}
+          <section className="panel viewer-panel">
+            <div className="panel-title viewer-title">
+              <h3><ScanLine size={16} /> Radiograph viewer</h3>
+              {file && (
+                <div className="seg">
+                  <button className={mode === "original" ? "on" : ""} onClick={() => setMode("original")}><ImageIcon size={14} /> Original</button>
+                  <button className={mode === "heatmap" ? "on" : ""} disabled={!heatKeys.length} onClick={() => setMode("heatmap")}><Layers size={14} /> Heatmap</button>
+                </div>
+              )}
+            </div>
 
-              <label htmlFor="file-upload" className="upload-label">
-                {file ? (
-                  <div className="file-preview">
-                    <CheckCircle className="success-icon" size={48} />
-                    <p className="file-name">{file.name}</p>
-                    <span className="change-text">Click or drag to replace</span>
+            {!file ? (
+              <div
+                className={`dropzone ${drag ? "drag" : ""}`}
+                onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                onDragLeave={() => setDrag(false)}
+                onDrop={onDrop}
+                onClick={() => inputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && inputRef.current?.click()}
+              >
+                <div className="drop-rings"><span /><span /><span /></div>
+                <div className="drop-icon"><UploadCloud size={34} /></div>
+                <h2>Drop a chest X-ray here</h2>
+                <p className="muted">or click to browse · PNG or JPG · up to 25 MB</p>
+                <div className="drop-actions" onClick={(e) => e.stopPropagation()}>
+                  <button className="btn btn-primary" onClick={() => inputRef.current?.click()}><FileImage size={17} /> Choose file</button>
+                  <button className="btn btn-ghost" onClick={loadSample}><FlaskConical size={17} /> Try sample X-ray</button>
+                </div>
+                <p className="faint drop-hint mono">Frontal (PA/AP) views give the most reliable results</p>
+              </div>
+            ) : (
+              <>
+                <div
+                  className={`viewer ${drag ? "drag" : ""}`}
+                  onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                  onDragLeave={() => setDrag(false)}
+                  onDrop={onDrop}
+                >
+                  <div className="viewer-stage" style={{ transform: `scale(${zoom})` }}>
+                    <AnimatePresence mode="wait">
+                      <motion.img
+                        key={viewSrc}
+                        src={viewSrc}
+                        alt="Radiograph"
+                        style={{ filter }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.35 }}
+                        draggable="false"
+                      />
+                    </AnimatePresence>
                   </div>
-                ) : (
-                  <div className="empty-state">
-                    <Upload className="upload-icon" size={48} />
-                    <h3>Upload X-Ray Image</h3>
-                    <p>Drag & drop or click to browse</p>
-                    <span className="file-types">Supports JPG, PNG, DICOM</span>
+                  {loading && (
+                    <div className="scan-overlay">
+                      <div className="scanline" />
+                      <div className="scan-glow" />
+                      <div className="scan-grid" />
+                    </div>
+                  )}
+                  <div className="viewer-hud tl mono">{file.name}</div>
+                  <div className="viewer-hud tr mono">
+                    {mode === "heatmap" && selected ? <><span className="dot" style={{ color: "var(--danger)" }} /> CAM · {label(selected)}</> : "SOURCE"}
+                  </div>
+                  <div className="viewer-hud bl mono">B {bright}% · C {contrast}% · {zoom.toFixed(1)}×</div>
+                  {mode === "heatmap" && (
+                    <div className="legend">
+                      <span className="mono">LOW</span><i /><span className="mono">HIGH</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="tools">
+                  <label className="tool"><Sun size={15} /><input type="range" min="40" max="180" value={bright} onChange={(e) => setBright(+e.target.value)} aria-label="Brightness" /></label>
+                  <label className="tool"><Contrast size={15} /><input type="range" min="40" max="220" value={contrast} onChange={(e) => setContrast(+e.target.value)} aria-label="Contrast" /></label>
+                  <div className="tool-btns">
+                    <button className={`icon-btn ${invert ? "active" : ""}`} onClick={() => setInvert((v) => !v)} title="Invert"><SunMoon size={16} /></button>
+                    <button className="icon-btn" onClick={() => setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)))} title="Zoom out"><ZoomOut size={16} /></button>
+                    <button className="icon-btn" onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))} title="Zoom in"><ZoomIn size={16} /></button>
+                    <button className="icon-btn" onClick={resetView} title="Reset view"><RotateCcw size={16} /></button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => inputRef.current?.click()}><UploadCloud size={15} /> Replace</button>
+                  </div>
+                </div>
+
+                {heatKeys.length > 0 && (
+                  <div className="thumbs">
+                    {heatKeys.map((k) => (
+                      <button key={k} className={`thumb ${selected === k && mode === "heatmap" ? "on" : ""}`} onClick={() => { setSelected(k); setMode("heatmap"); }}>
+                        <img src={result.heatmaps[k]} alt={label(k)} />
+                        <span>{label(k)}<b className="mono">{(result.probabilities[k] * 100).toFixed(0)}%</b></span>
+                      </button>
+                    ))}
                   </div>
                 )}
-              </label>
-            </div>
+              </>
+            )}
+            <input ref={inputRef} type="file" accept="image/png,image/jpeg" hidden onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ""; }} />
+          </section>
 
-            <div className="notes-section">
-              <label>Patient Name / Identifier</label>
-              <input
-                type="text"
-                placeholder="Ex. John Doe, Patient #123"
-                value={patientName}
-                onChange={(e) => setPatientName(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '12px',
-                  color: 'var(--text-primary)',
-                  marginBottom: '1rem'
-                }}
-              />
-
-              <label>ECT Number</label>
-              <input
-                type="text"
-                placeholder="Ex. ECT-12345"
-                value={ectNumber}
-                onChange={(e) => setEctNumber(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '12px',
-                  color: 'var(--text-primary)',
-                  marginBottom: '1rem'
-                }}
-              />
-
-              <label>Clinical Notes (Optional)</label>
-              <textarea
-                placeholder="Add any relevant patient symptoms or history..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-
-            <button
-              className="analyze-btn"
-              onClick={upload}
-              disabled={loading || !file}
-            >
-              {loading ? (
-                <>
-                  <Activity className="spin" size={20} />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Activity size={20} />
-                  Generate Report
-                </>
-              )}
-            </button>
-          </motion.div>
-
-          {result && (
-            <motion.div
-              className="report-section"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="report-card">
-                <div className="report-header">
-                  <FileText size={24} className="text-accent" />
-                  <h2>Analysis Results</h2>
-                  <span className="confidence-badge">
-                    {result?.reportText ? "Report Received" : "N/A"}
-                  </span>
+          {/* ===== RIGHT: controls & results ===== */}
+          <aside className="side">
+            <section className="panel panel-pad">
+              <div className="panel-title"><h3><User size={16} /> Patient</h3>{savedId && <span className="chip ok"><CheckCircle2 size={13} /> Saved</span>}</div>
+              <div className="form-grid">
+                <div className="field">
+                  <label>Patient name</label>
+                  <div className="input-wrap"><User size={16} /><input className="input" value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder="Full name" /></div>
                 </div>
-
-                <div className="report-content">
-                  <div className="finding-box">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <h3>Primary Finding</h3>
-                      <button
-                        onClick={() => setIsEditing(!isEditing)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ff4d00',
-                          fontSize: '0.8rem',
-                          cursor: 'pointer',
-                          textDecoration: 'underline'
-                        }}
-                      >
-                        {isEditing ? 'Done' : 'Edit'}
-                      </button>
-                    </div>
-                    <div
-                      className="finding-text"
-                      style={{
-                        position: 'relative',
-                        border: isEditing ? '1px solid rgba(255, 77, 0, 0.5)' : '1px solid transparent',
-                        borderRadius: '8px',
-                        transition: 'border-color 0.2s'
-                      }}
-                    >
-                      <div
-                        contentEditable={isEditing}
-                        suppressContentEditableWarning={true}
-                        onBlur={(e) => setResult({ ...result, reportText: e.currentTarget.innerText })}
-                        style={{
-                          whiteSpace: 'pre-wrap',
-                          margin: 0,
-                          fontFamily: 'inherit',
-                          fontSize: '1rem',
-                          lineHeight: '1.6',
-                          color: '#e4e4e7',
-                          padding: '0.5rem',
-                          outline: 'none',
-                          minHeight: '100px'
-                        }}
-                      >
-                        {result.reportText}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="image-preview">
-                    <img
-                      src={result.imagePreview || `${BACKEND_URL}/${result.report?.imagePath || ''}`}
-                      alt="Analyzed X-Ray"
-                    />
-                    <div className="scan-overlay"></div>
-                  </div>
-
-                  <div className="report-details">
-                    <div className="detail-row">
-                      <span className="label">Patient Notes</span>
-                      <span className="value">{notes || result.report?.notes || "None provided"}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="label">Analysis Time</span>
-                      <span className="value">{new Date().toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  <div className="report-actions">
-                    <button
-                      className="action-btn secondary"
-                      onClick={saveReport}
-                      disabled={!result?.reportText}
-                    >
-                      <CheckCircle size={18} />
-                      {result?.reportText ? "Save to History" : "Save to History"}
-                    </button>
-                    <button className="action-btn primary" onClick={() => downloadPDF()}>
-                      <Download size={18} />
-                      Download PDF
-                    </button>
-                  </div>
+                <div className="field">
+                  <label>Reference no.</label>
+                  <div className="input-wrap"><Hash size={16} /><input className="input" value={ectNumber} onChange={(e) => setEctNumber(e.target.value)} placeholder="MRN / ECT" /></div>
                 </div>
               </div>
-            </motion.div>
-          )}
+              <div className="field" style={{ marginTop: 14 }}>
+                <label>Clinical notes</label>
+                <textarea className="input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Symptoms, history, indication…" />
+              </div>
+              <button className="btn btn-primary btn-lg btn-block analyze-btn" onClick={analyze} disabled={!file || loading || ml === "offline"}>
+                {loading ? <><span className="spinner" /> Analyzing…</> : <><Sparkles size={18} /> {result ? "Re-run analysis" : "Run AI analysis"}</>}
+              </button>
+              {!file && <p className="faint mono hint">Upload an image to enable analysis</p>}
+            </section>
+
+            <AnimatePresence mode="wait">
+              {loading && (
+                <motion.section key="loading" className="panel panel-pad" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <div className="panel-title"><h3><Cpu size={16} /> Inference</h3></div>
+                  <ol className="stages">
+                    {STAGES.map((s, i) => (
+                      <li key={s} className={i < stage ? "done" : i === stage ? "active" : ""}>
+                        <span className="stage-dot">{i < stage ? <CheckCircle2 size={14} /> : i === stage ? <span className="spinner" style={{ width: 12, height: 12 }} /> : null}</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ol>
+                </motion.section>
+              )}
+
+              {result && !loading && (
+                <motion.div key="result" className="results" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                  <section className={`panel panel-pad risk-card ${risk.tone}`}>
+                    <RiskGauge value={peak} tone={risk.tone} size={132} />
+                    <div className="risk-body">
+                      <span className={`chip ${risk.tone}`}>{risk.tone === "ok" ? <CheckCircle2 size={13} /> : <ShieldAlert size={13} />} {risk.label}</span>
+                      <p className="muted" style={{ margin: "10px 0 12px", fontSize: 14 }}>{risk.text}</p>
+                      <div className="finding-chips">
+                        {result.findings.length ? result.findings.map((f) => (
+                          <span key={f} className="chip danger" title={PATHOLOGIES[f]?.desc}>{label(f)}</span>
+                        )) : <span className="chip ok">Clear</span>}
+                      </div>
+                      <div className="risk-meta mono faint">
+                        {result.inference_ms != null && <span><Timer size={12} /> {result.inference_ms} ms</span>}
+                        <span>threshold {Math.round((result.threshold || THRESHOLD) * 100)}%</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="panel panel-pad">
+                    <div className="panel-title">
+                      <h3><Layers size={16} /> Pathology probabilities</h3>
+                      <span className="faint mono" style={{ fontSize: 11 }}>click a finding to view its map</span>
+                    </div>
+                    <ProbBars probabilities={result.probabilities} selected={mode === "heatmap" ? selected : null} selectable={heatKeys} onSelect={(k) => { setSelected(k); setMode("heatmap"); }} />
+                    {selected && PATHOLOGIES[selected] && (
+                      <div className="explain-box">
+                        <b>{label(selected)}</b>: <span className="muted">{PATHOLOGIES[selected].desc}</span>
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="panel panel-pad">
+                    <div className="panel-title"><h3><NotebookPen size={16} /> Draft report</h3><span className="chip neutral mono">editable</span></div>
+                    <textarea className="input report-editor mono" value={reportText} onChange={(e) => { setReportText(e.target.value); setSavedId(null); }} rows={9} />
+                    <div className="report-actions">
+                      <button className="btn btn-primary" onClick={save} disabled={saving || !!savedId}>
+                        {saving ? <><span className="spinner" /> Saving…</> : savedId ? <><CheckCircle2 size={17} /> Saved</> : <><Save size={17} /> Save to history</>}
+                      </button>
+                      <button className="btn btn-ghost" onClick={pdf}><Download size={17} /> PDF</button>
+                      <button className="btn btn-ghost" onClick={newAnalysis}><RotateCcw size={17} /> New</button>
+                    </div>
+                    <p className="faint disclaimer"><ShieldAlert size={13} /> AI-generated screening aid. A qualified radiologist must confirm all findings.</p>
+                  </section>
+                </motion.div>
+              )}
+
+              {!result && !loading && (
+                <motion.section key="empty" className="panel panel-pad empty-result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="empty-ic"><Sparkles size={22} /></div>
+                  <h4>Results will appear here</h4>
+                  <p className="muted">You'll get probabilities for 18 pathologies, attention heatmaps and an editable draft report.</p>
+                </motion.section>
+              )}
+            </AnimatePresence>
+          </aside>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
-
-export default UserDashboard;

@@ -5,16 +5,22 @@ Local ML API for CXR-RRG (replaces the old Colab + ngrok notebook).
 
 POST /predict  (multipart form, field "image")
   -> {
-       "report": "<text shown in the dashboard>",
-       "findings": ["Effusion", ...],                 # pathologies >= threshold
-       "probabilities": {"Effusion": 0.71, ...},      # all 18 pathologies
-       "model": "...",
+       "report": "<plain-text report shown/edited in the dashboard>",
+       "findings": ["Effusion", ...],             # pathologies >= threshold
+       "probabilities": {"Effusion": 0.71, ...},  # all 18, sorted high -> low
+       "heatmaps": {"Effusion": "data:image/jpeg;base64,..."},  # top 4 (CAM)
+       "crop": "data:image/jpeg;base64,...",      # region the model analysed
+       "risk": "high" | "moderate" | "low",
+       "threshold": 0.5,
+       "inference_ms": 140,
+       "model": "torchxrayvision/densenet121-res224-all",
        "vlm_report": "..."   # only if ENABLE_VLM=1 (fine-tuned Qwen2-VL, experimental)
      }
 GET /health
 """
 import os
 import tempfile
+import time
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -25,7 +31,8 @@ ALLOWED = {".png", ".jpg", ".jpeg"}
 ENABLE_VLM = os.environ.get("ENABLE_VLM") == "1"
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
+app.json.sort_keys = False  # keep probabilities ordered high -> low
 CORS(app)
 
 print("Loading classifier...")
@@ -33,6 +40,7 @@ classifier = CXRClassifier()
 vlm = None
 if ENABLE_VLM:
     from inference import CXRModel
+
     print("Loading fine-tuned Qwen2-VL (experimental)...")
     vlm = CXRModel(use_adapters=True)
 print("Ready.")
@@ -46,35 +54,49 @@ READABLE = {
 }
 
 
+def readable(k):
+    return READABLE.get(k, k)
+
+
+def risk_level(probs):
+    top = max(probs.values())
+    if top >= 0.6:
+        return "high"
+    if top >= THRESHOLD:
+        return "moderate"
+    return "low"
+
+
 def build_report(probs):
     positives = [(k, v) for k, v in probs.items() if v >= THRESHOLD]
     borderline = [(k, v) for k, v in probs.items() if 0.4 <= v < THRESHOLD]
-    name = lambda k: READABLE.get(k, k)
-    lines = ["AI SCREENING RESULT"]
+    lines = ["FINDINGS"]
     if positives:
-        lines.append("Abnormal findings detected:")
-        lines += [f"  - {name(k)}: {v:.0%} probability" for k, v in positives]
+        lines += [f"- {readable(k)} suspected ({v:.0%} probability)." for k, v in positives]
     else:
-        lines.append("No abnormality detected above the alert threshold.")
+        lines.append("- No pathology detected above the alert threshold.")
     if borderline:
-        lines.append("Borderline (worth reviewing):")
-        lines += [f"  - {name(k)}: {v:.0%}" for k, v in borderline]
+        lines.append(
+            "- Borderline: "
+            + ", ".join(f"{readable(k)} ({v:.0%})" for k, v in borderline)
+            + "."
+        )
     lines += [
         "",
-        "Impression: " + (
-            ", ".join(name(k) for k, _ in positives) + " suspected. Radiologist review recommended."
-            if positives else "No acute cardiopulmonary abnormality detected by the model."
+        "IMPRESSION",
+        (
+            ", ".join(readable(k) for k, _ in positives)
+            + " suspected. Radiologist review recommended."
+            if positives
+            else "No acute cardiopulmonary abnormality detected by the model."
         ),
-        "",
-        "Note: AI-generated screening aid, not a medical diagnosis. "
-        "Must be confirmed by a qualified radiologist.",
     ]
     return "\n".join(lines)
 
 
 @app.get("/health")
 def health():
-    return jsonify(status="ok", classifier=WEIGHTS, vlm=bool(vlm))
+    return jsonify(status="ok", classifier=WEIGHTS, vlm=bool(vlm), threshold=THRESHOLD)
 
 
 @app.post("/predict")
@@ -84,21 +106,28 @@ def predict():
         return jsonify(error="Image file is required (form field 'image')"), 400
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in ALLOWED:
-        return jsonify(error=f"Unsupported file type {ext}. Use PNG or JPG."), 400
+        return jsonify(error=f"Unsupported file type {ext or '(none)'}. Use PNG or JPG."), 400
 
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
         f.save(tmp.name)
         path = tmp.name
     try:
-        probs = classifier.predict(path)
+        t0 = time.time()
+        res = classifier.analyze(path)
+        probs = res["probabilities"]
         out = {
             "report": build_report(probs),
             "findings": classifier.findings(probs),
             "probabilities": {k: round(v, 4) for k, v in probs.items()},
+            "heatmaps": res["heatmaps"],
+            "crop": res["crop"],
+            "risk": risk_level(probs),
+            "threshold": THRESHOLD,
             "model": f"torchxrayvision/{WEIGHTS}",
         }
         if vlm is not None:
             out["vlm_report"] = vlm.generate_report(path)
+        out["inference_ms"] = int((time.time() - t0) * 1000)
         return jsonify(out)
     except Exception as e:  # bad/corrupt image etc.
         return jsonify(error=f"Could not analyze image: {e}"), 422
