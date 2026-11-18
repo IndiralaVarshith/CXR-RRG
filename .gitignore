@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Builds
+frontend/build/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# User uploads (patient images - never commit)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Datasets / large model files (adapters in ml/adapters are allowed)
+*.zip
+data/
+datasets/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.log
+cxr-backend-flask
