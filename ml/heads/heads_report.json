@@ -1,0 +1,540 @@
+{
+  "Cardiomegaly": {
+    "n_pos": 324,
+    "chosen": "stack+f",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.92,
+        "auc_test": 0.914,
+        "sens_test": 0.898,
+        "spec_test": 0.792,
+        "detect_sens_test": 0.541,
+        "detect_spec_test": 0.956
+      },
+      "avg": {
+        "auc_train_oof": 0.93,
+        "auc_test": 0.916,
+        "sens_test": 0.857,
+        "spec_test": 0.84,
+        "detect_sens_test": 0.52,
+        "detect_spec_test": 0.953
+      },
+      "stack": {
+        "auc_train_oof": 0.93,
+        "auc_test": 0.919,
+        "sens_test": 0.867,
+        "spec_test": 0.837,
+        "detect_sens_test": 0.561,
+        "detect_spec_test": 0.943
+      },
+      "stack+f": {
+        "auc_train_oof": 0.935,
+        "auc_test": 0.925,
+        "sens_test": 0.898,
+        "spec_test": 0.813,
+        "detect_sens_test": 0.541,
+        "detect_spec_test": 0.954
+      }
+    }
+  },
+  "Effusion": {
+    "n_pos": 139,
+    "chosen": "base",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.93,
+        "auc_test": 0.926,
+        "sens_test": 0.881,
+        "spec_test": 0.904,
+        "detect_sens_test": 0.667,
+        "detect_spec_test": 0.958
+      },
+      "avg": {
+        "auc_train_oof": 0.925,
+        "auc_test": 0.918,
+        "sens_test": 0.786,
+        "spec_test": 0.897,
+        "detect_sens_test": 0.595,
+        "detect_spec_test": 0.954
+      },
+      "stack": {
+        "auc_train_oof": 0.923,
+        "auc_test": 0.932,
+        "sens_test": 0.905,
+        "spec_test": 0.851,
+        "detect_sens_test": 0.714,
+        "detect_spec_test": 0.952
+      },
+      "stack+f": {
+        "auc_train_oof": 0.924,
+        "auc_test": 0.931,
+        "sens_test": 0.881,
+        "spec_test": 0.904,
+        "detect_sens_test": 0.786,
+        "detect_spec_test": 0.947
+      }
+    }
+  },
+  "Atelectasis": {
+    "n_pos": 299,
+    "chosen": "stack",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.809,
+        "auc_test": 0.81,
+        "sens_test": 0.756,
+        "spec_test": 0.727,
+        "detect_sens_test": 0.289,
+        "detect_spec_test": 0.954
+      },
+      "avg": {
+        "auc_train_oof": 0.806,
+        "auc_test": 0.818,
+        "sens_test": 0.767,
+        "spec_test": 0.726,
+        "detect_sens_test": 0.289,
+        "detect_spec_test": 0.961
+      },
+      "stack": {
+        "auc_train_oof": 0.831,
+        "auc_test": 0.838,
+        "sens_test": 0.811,
+        "spec_test": 0.699,
+        "detect_sens_test": 0.422,
+        "detect_spec_test": 0.938
+      },
+      "stack+f": {
+        "auc_train_oof": 0.828,
+        "auc_test": 0.843,
+        "sens_test": 0.844,
+        "spec_test": 0.659,
+        "detect_sens_test": 0.367,
+        "detect_spec_test": 0.954
+      }
+    }
+  },
+  "Lung Opacity": {
+    "n_pos": 471,
+    "chosen": "stack",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.805,
+        "auc_test": 0.812,
+        "sens_test": 0.723,
+        "spec_test": 0.753,
+        "detect_sens_test": 0.38,
+        "detect_spec_test": 0.945
+      },
+      "avg": {
+        "auc_train_oof": 0.775,
+        "auc_test": 0.798,
+        "sens_test": 0.701,
+        "spec_test": 0.735,
+        "detect_sens_test": 0.358,
+        "detect_spec_test": 0.965
+      },
+      "stack": {
+        "auc_train_oof": 0.82,
+        "auc_test": 0.828,
+        "sens_test": 0.693,
+        "spec_test": 0.795,
+        "detect_sens_test": 0.387,
+        "detect_spec_test": 0.955
+      },
+      "stack+f": {
+        "auc_train_oof": 0.818,
+        "auc_test": 0.835,
+        "sens_test": 0.701,
+        "spec_test": 0.809,
+        "detect_sens_test": 0.401,
+        "detect_spec_test": 0.957
+      }
+    }
+  },
+  "Pneumonia": {
+    "n_pos": 37,
+    "chosen": "stack",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.783,
+        "auc_test": 0.779,
+        "sens_test": 0.538,
+        "spec_test": 0.934,
+        "detect_sens_test": 0.462,
+        "detect_spec_test": 0.954
+      },
+      "avg": {
+        "auc_train_oof": 0.769,
+        "auc_test": 0.794,
+        "sens_test": 0.462,
+        "spec_test": 0.897,
+        "detect_sens_test": 0.385,
+        "detect_spec_test": 0.946
+      },
+      "stack": {
+        "auc_train_oof": 0.8,
+        "auc_test": 0.882,
+        "sens_test": 0.692,
+        "spec_test": 0.858,
+        "detect_sens_test": 0.538,
+        "detect_spec_test": 0.956
+      },
+      "stack+f": {
+        "auc_train_oof": 0.74,
+        "auc_test": 0.883,
+        "sens_test": 0.769,
+        "spec_test": 0.827,
+        "detect_sens_test": 0.462,
+        "detect_spec_test": 0.942
+      }
+    }
+  },
+  "Consolidation": {
+    "n_pos": 27,
+    "chosen": "avg",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.91,
+        "auc_test": 0.87,
+        "sens_test": 0.636,
+        "spec_test": 0.939,
+        "detect_sens_test": 0.545,
+        "detect_spec_test": 0.953
+      },
+      "avg": {
+        "auc_train_oof": 0.935,
+        "auc_test": 0.923,
+        "sens_test": 0.727,
+        "spec_test": 0.923,
+        "detect_sens_test": 0.455,
+        "detect_spec_test": 0.957
+      },
+      "stack": {
+        "auc_train_oof": 0.903,
+        "auc_test": 0.932,
+        "sens_test": 0.818,
+        "spec_test": 0.869,
+        "detect_sens_test": 0.727,
+        "detect_spec_test": 0.931
+      },
+      "stack+f": {
+        "auc_train_oof": 0.913,
+        "auc_test": 0.934,
+        "sens_test": 0.727,
+        "spec_test": 0.93,
+        "detect_sens_test": 0.727,
+        "detect_spec_test": 0.943
+      }
+    }
+  },
+  "Edema": {
+    "n_pos": 41,
+    "chosen": "stack",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.902,
+        "auc_test": 0.947,
+        "sens_test": 1.0,
+        "spec_test": 0.817,
+        "detect_sens_test": 0.556,
+        "detect_spec_test": 0.948
+      },
+      "avg": {
+        "auc_train_oof": 0.889,
+        "auc_test": 0.944,
+        "sens_test": 1.0,
+        "spec_test": 0.828,
+        "detect_sens_test": 0.556,
+        "detect_spec_test": 0.947
+      },
+      "stack": {
+        "auc_train_oof": 0.925,
+        "auc_test": 0.953,
+        "sens_test": 1.0,
+        "spec_test": 0.821,
+        "detect_sens_test": 0.667,
+        "detect_spec_test": 0.949
+      },
+      "stack+f": {
+        "auc_train_oof": 0.908,
+        "auc_test": 0.975,
+        "sens_test": 1.0,
+        "spec_test": 0.845,
+        "detect_sens_test": 0.778,
+        "detect_spec_test": 0.955
+      }
+    }
+  },
+  "Emphysema": {
+    "n_pos": 137,
+    "chosen": "stack+f",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.848,
+        "auc_test": 0.895,
+        "sens_test": 0.811,
+        "spec_test": 0.835,
+        "detect_sens_test": 0.486,
+        "detect_spec_test": 0.957
+      },
+      "avg": {
+        "auc_train_oof": 0.871,
+        "auc_test": 0.889,
+        "sens_test": 0.865,
+        "spec_test": 0.753,
+        "detect_sens_test": 0.378,
+        "detect_spec_test": 0.96
+      },
+      "stack": {
+        "auc_train_oof": 0.893,
+        "auc_test": 0.915,
+        "sens_test": 0.892,
+        "spec_test": 0.825,
+        "detect_sens_test": 0.541,
+        "detect_spec_test": 0.951
+      },
+      "stack+f": {
+        "auc_train_oof": 0.907,
+        "auc_test": 0.932,
+        "sens_test": 0.919,
+        "spec_test": 0.82,
+        "detect_sens_test": 0.595,
+        "detect_spec_test": 0.949
+      }
+    }
+  },
+  "Nodule": {
+    "n_pos": 101,
+    "chosen": "stack",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.599,
+        "auc_test": 0.698,
+        "sens_test": 0.364,
+        "spec_test": 0.889,
+        "detect_sens_test": 0.212,
+        "detect_spec_test": 0.946
+      },
+      "avg": {
+        "auc_train_oof": 0.637,
+        "auc_test": 0.739,
+        "sens_test": 0.606,
+        "spec_test": 0.667,
+        "detect_sens_test": 0.242,
+        "detect_spec_test": 0.954
+      },
+      "stack": {
+        "auc_train_oof": 0.662,
+        "auc_test": 0.762,
+        "sens_test": 0.667,
+        "spec_test": 0.631,
+        "detect_sens_test": 0.333,
+        "detect_spec_test": 0.969
+      },
+      "stack+f": {
+        "auc_train_oof": 0.635,
+        "auc_test": 0.787,
+        "sens_test": 0.909,
+        "spec_test": 0.496,
+        "detect_sens_test": 0.364,
+        "detect_spec_test": 0.95
+      }
+    }
+  },
+  "Fracture": {
+    "n_pos": 82,
+    "chosen": "avg",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.682,
+        "auc_test": 0.716,
+        "sens_test": 0.571,
+        "spec_test": 0.637,
+        "detect_sens_test": 0.143,
+        "detect_spec_test": 0.954
+      },
+      "avg": {
+        "auc_train_oof": 0.762,
+        "auc_test": 0.816,
+        "sens_test": 0.714,
+        "spec_test": 0.709,
+        "detect_sens_test": 0.357,
+        "detect_spec_test": 0.957
+      },
+      "stack": {
+        "auc_train_oof": 0.758,
+        "auc_test": 0.834,
+        "sens_test": 0.786,
+        "spec_test": 0.677,
+        "detect_sens_test": 0.321,
+        "detect_spec_test": 0.954
+      },
+      "stack+f": {
+        "auc_train_oof": 0.737,
+        "auc_test": 0.857,
+        "sens_test": 0.964,
+        "spec_test": 0.576,
+        "detect_sens_test": 0.321,
+        "detect_spec_test": 0.953
+      }
+    }
+  },
+  "Hernia": {
+    "n_pos": 43,
+    "chosen": "stack+f",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.971,
+        "auc_test": 0.988,
+        "sens_test": 0.818,
+        "spec_test": 0.971,
+        "detect_sens_test": 0.818,
+        "detect_spec_test": 0.971
+      },
+      "avg": {
+        "auc_train_oof": 0.949,
+        "auc_test": 0.994,
+        "sens_test": 1.0,
+        "spec_test": 0.949,
+        "detect_sens_test": 1.0,
+        "detect_spec_test": 0.95
+      },
+      "stack": {
+        "auc_train_oof": 0.959,
+        "auc_test": 0.983,
+        "sens_test": 1.0,
+        "spec_test": 0.907,
+        "detect_sens_test": 0.909,
+        "detect_spec_test": 0.955
+      },
+      "stack+f": {
+        "auc_train_oof": 0.973,
+        "auc_test": 0.989,
+        "sens_test": 0.909,
+        "spec_test": 0.92,
+        "detect_sens_test": 0.909,
+        "detect_spec_test": 0.952
+      }
+    }
+  },
+  "Infiltration": {
+    "n_pos": 58,
+    "chosen": "stack",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.723,
+        "auc_test": 0.812,
+        "sens_test": 0.944,
+        "spec_test": 0.589,
+        "detect_sens_test": 0.278,
+        "detect_spec_test": 0.94
+      },
+      "avg": {
+        "auc_train_oof": 0.706,
+        "auc_test": 0.762,
+        "sens_test": 0.556,
+        "spec_test": 0.844,
+        "detect_sens_test": 0.111,
+        "detect_spec_test": 0.943
+      },
+      "stack": {
+        "auc_train_oof": 0.842,
+        "auc_test": 0.887,
+        "sens_test": 0.833,
+        "spec_test": 0.764,
+        "detect_sens_test": 0.5,
+        "detect_spec_test": 0.951
+      },
+      "stack+f": {
+        "auc_train_oof": 0.842,
+        "auc_test": 0.879,
+        "sens_test": 0.889,
+        "spec_test": 0.687,
+        "detect_sens_test": 0.444,
+        "detect_spec_test": 0.941
+      }
+    }
+  },
+  "Pneumothorax": {
+    "n_pos": 21,
+    "chosen": "stack",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.764,
+        "auc_test": 0.484,
+        "sens_test": 0.286,
+        "spec_test": 0.827,
+        "detect_sens_test": 0.143,
+        "detect_spec_test": 0.951
+      },
+      "avg": {
+        "auc_train_oof": 0.759,
+        "auc_test": 0.524,
+        "sens_test": 0.143,
+        "spec_test": 0.735,
+        "detect_sens_test": 0.143,
+        "detect_spec_test": 0.953
+      },
+      "stack": {
+        "auc_train_oof": 0.81,
+        "auc_test": 0.632,
+        "sens_test": 0.429,
+        "spec_test": 0.766,
+        "detect_sens_test": 0.143,
+        "detect_spec_test": 0.955
+      },
+      "stack+f": {
+        "auc_train_oof": 0.807,
+        "auc_test": 0.621,
+        "sens_test": 0.286,
+        "spec_test": 0.77,
+        "detect_sens_test": 0.143,
+        "detect_spec_test": 0.95
+      }
+    }
+  },
+  "_any": {
+    "n_pos": 1126,
+    "chosen": "stack+f",
+    "methods": {
+      "base": {
+        "auc_train_oof": 0.804,
+        "auc_test": 0.81,
+        "sens_test": 0.636,
+        "spec_test": 0.817,
+        "detect_sens_test": 0.391,
+        "detect_spec_test": 0.958
+      },
+      "stack": {
+        "auc_train_oof": 0.827,
+        "auc_test": 0.845,
+        "sens_test": 0.831,
+        "spec_test": 0.684,
+        "detect_sens_test": 0.426,
+        "detect_spec_test": 0.953
+      },
+      "stack+f": {
+        "auc_train_oof": 0.834,
+        "auc_test": 0.853,
+        "sens_test": 0.796,
+        "spec_test": 0.696,
+        "detect_sens_test": 0.423,
+        "detect_spec_test": 0.966
+      }
+    }
+  },
+  "_user_view": {
+    "old_single_model": {
+      "healthy_false_flags": 0.9784688995215312,
+      "healthy_clean": 0.5933014354066986,
+      "sick_flagged": 0.8895522388059701,
+      "primary_correct": 0.47651006711409394
+    },
+    "new_ensemble": {
+      "healthy_false_flags": 0.18181818181818182,
+      "healthy_clean": 0.9114832535885168,
+      "sick_flagged": 0.6567164179104478,
+      "primary_correct": 0.5863636363636363
+    }
+  }
+}

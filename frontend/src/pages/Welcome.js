@@ -198,9 +198,9 @@ export default function Welcome() {
       <section className="section container">
         <div className="metrics panel">
           {[
-            ["0.852", "AUROC", "sick vs healthy, tested on 3,695 Indiana X-rays"],
-            ["90%", "Sensitivity", "of patients with disease flagged for review"],
-            ["~120ms", "Latency", "per image on a laptop CPU"],
+            ["0.869", "Mean AUROC", "per disease, on 1,109 held-out patients"],
+            ["91%", "Healthy patients", "correctly left unflagged (was 59%)"],
+            ["5", "Expert models", "combined into one calibrated ensemble"],
             ["100%", "Local", "no cloud upload of patient data"],
           ].map(([v, t, d], i) => (
             <motion.div key={t} className="metric" {...reveal} transition={{ ...reveal.transition, delay: i * 0.08 }}>

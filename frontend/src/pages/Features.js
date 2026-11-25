@@ -23,22 +23,29 @@ const PIPE = [
   { icon: FileText, t: "Report", d: "Structured findings and impression, editable by a clinician" },
 ];
 
-// Full Indiana University set: 3,695 frontal X-rays (ml/evaluate_full.py, ml/results/)
+// Held-out test: 1,109 Indiana patients never used for fitting or threshold choice (ml/train_heads.py)
 const EVAL = [
-  { m: "DenseNet-121 \u00b7 all (deployed)", seen: true, auc: "0.852", mean: "0.827", sens: "90%", spec: "54%", t: "0.12 s", ok: true },
-  { m: "ResNet-50 \u00b7 512px (never saw Indiana)", seen: false, auc: "0.805", mean: "0.828", sens: "15%*", spec: "99%", t: "\u2248 1 s", ok: true },
-  { m: "DenseNet-121 \u00b7 PadChest (never saw Indiana)", seen: false, auc: "0.824", mean: "0.809", sens: "89%", spec: "52%", t: "0.12 s", ok: true },
-  { m: "DenseNet-121 \u00b7 CheXpert", seen: false, auc: "0.759", mean: "0.754", sens: "77%", spec: "59%", t: "0.12 s", ok: true },
-  { m: "DenseNet-121 \u00b7 NIH", seen: false, auc: "0.798", mean: "0.734", sens: "92%", spec: "38%", t: "0.12 s", ok: true },
-  { m: "Fine-tuned Qwen2-VL-2B + LoRA (ours)", seen: false, auc: "\u22480.50", mean: "-", sens: "0%", spec: "100%", t: "4.8 s", ok: false },
+  { m: "5-model ensemble + calibrated heads (deployed)", auc: "0.853", mean: "0.869", sens: "80%", spec: "70%", t: "\u2248 0.3 s", ok: true },
+  { m: "DenseNet-121 \u00b7 all (previous)", auc: "0.810", mean: "0.819", sens: "90%", spec: "54%", t: "0.12 s", ok: true },
+  { m: "ResNet-50 \u00b7 512px (alone)", auc: "0.805", mean: "0.828", sens: "15%*", spec: "99%", t: "\u2248 1 s", ok: true },
+  { m: "DenseNet-121 \u00b7 PadChest (alone)", auc: "0.824", mean: "0.809", sens: "89%", spec: "52%", t: "0.12 s", ok: true },
+  { m: "Fine-tuned Qwen2-VL-2B + LoRA (ours)", auc: "\u22480.50", mean: "-", sens: "0%", spec: "100%", t: "4.8 s", ok: false },
 ];
 
-// Deployed model, per disease (AUROC, number of positive patients)
+// Deployed ensemble, per disease: held-out AUROC, positive patients, before (single model)
 const PER_DISEASE = [
-  ["Hiatal hernia", 0.975, 43], ["Pleural effusion", 0.928, 139], ["Cardiomegaly", 0.918, 324], ["Edema", 0.914, 41],
-  ["Mass", 0.906, 15], ["Consolidation", 0.89, 27], ["Emphysema", 0.863, 137], ["Atelectasis", 0.81, 299],
-  ["Lung opacity", 0.81, 471], ["Pneumonia", 0.793, 37], ["Infiltration", 0.761, 58], ["Fracture", 0.698, 82],
-  ["Pneumothorax", 0.676, 21], ["Nodule", 0.635, 101],
+  ["Hiatal hernia", 0.989, 43, 0.988], ["Edema", 0.953, 41, 0.947], ["Emphysema", 0.932, 137, 0.895],
+  ["Pleural effusion", 0.926, 139, 0.926], ["Cardiomegaly", 0.925, 324, 0.914], ["Consolidation", 0.923, 27, 0.87],
+  ["Infiltration", 0.887, 58, 0.812], ["Pneumonia", 0.882, 37, 0.779], ["Atelectasis", 0.838, 299, 0.81],
+  ["Lung opacity", 0.828, 471, 0.812], ["Fracture", 0.816, 82, 0.716], ["Nodule", 0.762, 101, 0.698],
+  ["Pneumothorax", 0.632, 21, 0.484],
+];
+
+// What a user notices (held-out patients)
+const USER_VIEW = [
+  ["Healthy patients with a false 'Detected' flag", "41%", "9%"],
+  ["'Most likely diagnosis' matches the radiologist", "48%", "59%"],
+  ["Average per-disease accuracy (AUROC)", "0.819", "0.869"],
 ];
 const grade = (a) => (a >= 0.9 ? ["Excellent", "var(--ok)"] : a >= 0.8 ? ["Good", "var(--accent)"] : a >= 0.75 ? ["Fair", "var(--warn)"] : ["Weak", "var(--danger)"]);
 
@@ -83,13 +90,14 @@ export default function Features() {
             <div className="panel-title"><h3><Cpu size={16} /> Model card</h3></div>
             <dl className="spec">
               {[
-                ["Architecture", "DenseNet-121 (7.0 M parameters)"],
-                ["Weights", "torchxrayvision · densenet121-res224-all"],
-                ["Training data", "NIH, CheXpert, MIMIC-CXR, PadChest, RSNA, OpenI, Google labels"],
-                ["Outputs", "18 independent pathology probabilities"],
-                ["Explainability", "Class Activation Mapping (exact, from the final linear layer)"],
-                ["Alert threshold", "0.50, calibrated per pathology"],
-                ["Runtime", "PyTorch on CPU, about 120 ms per image"],
+                ["Ensemble", "4× DenseNet-121 (all, PadChest, NIH, CheXpert) + ResNet-50 at 512 px"],
+                ["Pretraining data", "NIH, CheXpert, MIMIC-CXR, PadChest, RSNA, SIIM, VinDr, OpenI"],
+                ["Calibration", "Per-disease logistic heads fitted on 2,586 Indiana patients"],
+                ["Outputs", "18 pathology scores + overall abnormality score"],
+                ["Alert levels", "Detected ≈ 95% specificity · Possible = balanced (Youden)"],
+                ["Input check", "X-ray autoencoder + colour check reject non-chest-X-ray images"],
+                ["Explainability", "Class Activation Mapping from the DenseNet-121 final layer"],
+                ["Runtime", "PyTorch on CPU, about 0.3 s per image"],
               ].map(([k, v]) => (
                 <div key={k}><dt className="mono">{k}</dt><dd>{v}</dd></div>
               ))}
@@ -127,27 +135,36 @@ export default function Features() {
           <span className="eyebrow">Evaluation</span>
           <h2>Measured, not marketed.</h2>
           <p>
-            Tested on every frontal chest X-ray in the Indiana University dataset: <b>3,695 patients</b>, with each radiologist's coded
-            findings used as ground truth. AUROC measures how well the score separates patients with a disease from those without it
-            (0.5 = coin flip, 1.0 = perfect).
+            Five pretrained chest X-ray networks are combined, and small per-disease layers are fitted to 2,586 Indiana University
+            patients. All numbers below come from <b>1,109 other patients</b> that were never used for fitting or tuning.
+            AUROC measures how well the score separates patients with a disease from those without it (0.5 = coin flip, 1.0 = perfect).
           </p>
         </motion.div>
 
-        <motion.div className="panel panel-pad" {...reveal}>
-          <div className="panel-title"><h3><CheckCircle2 size={16} /> Deployed model · accuracy per disease</h3></div>
+        <motion.div className="uv-grid" {...reveal}>
+          {USER_VIEW.map(([t, before, after]) => (
+            <div key={t} className="panel panel-pad uv">
+              <div className="faint" style={{ fontSize: 13 }}>{t}</div>
+              <div className="uv-nums"><span className="mono faint">{before}</span><span className="uv-arrow">→</span><b className="gradient-text">{after}</b></div>
+            </div>
+          ))}
+        </motion.div>
+
+        <motion.div className="panel panel-pad" style={{ marginTop: 20 }} {...reveal}>
+          <div className="panel-title"><h3><CheckCircle2 size={16} /> Deployed ensemble · accuracy per disease (held-out patients)</h3></div>
           <div className="dz-grid">
-            {PER_DISEASE.map(([name, a, n], i) => {
+            {PER_DISEASE.map(([name, a, n, before], i) => {
               const [g, c] = grade(a);
               return (
                 <motion.div key={name} className="dz" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.03 }}>
                   <div className="dz-top"><span>{name}</span><b className="mono" style={{ color: c }}>{a.toFixed(3)}</b></div>
                   <div className="dz-bar"><motion.span style={{ background: c }} initial={{ width: 0 }} whileInView={{ width: `${((a - 0.5) / 0.5) * 100}%` }} viewport={{ once: true }} transition={{ duration: 0.9, delay: i * 0.03 }} /></div>
-                  <div className="dz-meta mono faint"><span style={{ color: c }}>{g}</span><span>{n} patients</span></div>
+                  <div className="dz-meta mono faint"><span style={{ color: c }}>{g}</span><span>was {before.toFixed(2)} · {n} pts</span></div>
                 </motion.div>
               );
             })}
           </div>
-          <p className="faint" style={{ fontSize: 12.5, marginTop: 16 }}>Bars run from 0.5 (chance) to 1.0 (perfect). Weak areas: small nodules, pneumothorax and fractures. Don't rely on the AI for these.</p>
+          <p className="faint" style={{ fontSize: 12.5, marginTop: 16 }}>Bars run from 0.5 (chance) to 1.0 (perfect). Weakest: pneumothorax (too few cases, shown only when strongly detected) and small nodules. A radiologist must review every result.</p>
         </motion.div>
 
         <motion.div className="panel table-wrap" style={{ marginTop: 20 }} {...reveal}>
@@ -170,10 +187,11 @@ export default function Features() {
           </table>
         </motion.div>
         <motion.p className="faint" style={{ fontSize: 13, marginTop: 14, lineHeight: 1.6 }} {...reveal}>
-          Honesty notes: the deployed model's training data included part of this dataset (OpenI), so its scores are slightly
-          optimistic. Models that never saw it score about the same (0.81–0.83 mean AUROC), which confirms the accuracy holds up.
-          *ResNet-50 is not calibrated to the 50% alert level, hence its low sensitivity. Our fine-tuned report generator collapsed
-          (it called every X-ray normal) and is disabled. Reproduce with <span className="mono">ml/evaluate_full.py</span>.
+          Honesty notes: no X-ray AI is 100% accurate. Even two expert radiologists often disagree on the same film, and these
+          labels come from routine reports. "Detected" is set so that about 95% of patients without the condition are not flagged;
+          weaker signals are shown as "Possible". Images that aren't chest X-rays (photos, screenshots) are rejected by a pretrained
+          X-ray autoencoder. *ResNet-50 alone is not calibrated to the alert level. Reproduce with <span className="mono">ml/extract_features.py</span>
+          and <span className="mono">ml/train_heads.py</span>.
         </motion.p>
       </section>
 

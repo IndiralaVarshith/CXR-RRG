@@ -35,8 +35,16 @@ app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
 app.json.sort_keys = False  # keep probabilities ordered high -> low
 CORS(app)
 
-print("Loading classifier...")
+HEADS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "heads", "heads.npz")
+ensemble = None
+if os.path.exists(HEADS) and os.environ.get("CXR_SINGLE_MODEL") != "1":
+    from ensemble import EnsemblePredictor
+
+    print("Loading 5-model calibrated ensemble...")
+    ensemble = EnsemblePredictor(HEADS)
+print("Loading base classifier...")
 classifier = CXRClassifier()
+MODEL_NAME = "ensemble: 5 TorchXRayVision models + Indiana-calibrated heads" if ensemble else f"torchxrayvision/{WEIGHTS}"
 vlm = None
 if ENABLE_VLM:
     from inference import CXRModel
@@ -113,7 +121,7 @@ def build_report(probs):
 
 @app.get("/health")
 def health():
-    return jsonify(status="ok", classifier=WEIGHTS, vlm=bool(vlm), threshold=THRESHOLD)
+    return jsonify(status="ok", model=MODEL_NAME, ensemble=bool(ensemble), vlm=bool(vlm), threshold=THRESHOLD)
 
 
 @app.post("/predict")
@@ -130,8 +138,16 @@ def predict():
         path = tmp.name
     try:
         t0 = time.time()
-        res = classifier.analyze(path)
+        res = ensemble.analyze(path) if ensemble else classifier.analyze(path)
         probs = res["probabilities"]
+        quality = res.get("quality")
+        force = request.form.get("force") == "1"
+        if quality and not quality["looks_like_cxr"] and not force:
+            return jsonify(
+                error="This image doesn't look like a chest X-ray. Please upload a frontal (PA/AP) chest radiograph.",
+                code="not_cxr",
+                quality=quality,
+            ), 422
         out = {
             "report": build_report(probs),
             "findings": classifier.findings(probs),
@@ -141,8 +157,20 @@ def predict():
             "risk": risk_level(probs),
             "primary": (lambda p: {"name": p[0], "probability": round(p[1], 4)} if p else None)(primary_diagnosis(probs)),
             "threshold": THRESHOLD,
-            "model": f"torchxrayvision/{WEIGHTS}",
+            "model": MODEL_NAME,
         }
+        if ensemble:
+            out["quality"] = quality
+            out["reliability"] = {k: ensemble.reliability(k) for k in probs}
+            out["abnormal_score"] = res.get("abnormal_score")
+            warnings = []
+            if not quality["is_frontal"]:
+                warnings.append("This looks like a lateral (side) view. Results are most reliable on frontal PA/AP views.")
+            if not quality["looks_like_cxr"]:
+                warnings.append("Image is unusual for a chest X-ray; analyzed anyway at your request.")
+            out["warnings"] = warnings
+            if warnings:
+                out["report"] += "\n\nNOTE: " + " ".join(warnings)
         if vlm is not None:
             out["vlm_report"] = vlm.generate_report(path)
         out["inference_ms"] = int((time.time() - t0) * 1000)

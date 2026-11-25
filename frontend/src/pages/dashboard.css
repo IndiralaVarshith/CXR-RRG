@@ -200,3 +200,12 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 0; bo
 .dx-ok { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--ok-soft); color: var(--ok); font-size: 13.5px; font-weight: 500; }
 .dx-note { font-size: 11.5px; line-height: 1.5; margin-top: 16px; }
 .all-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; padding: 0; }
+
+.rel-chip { gap: 5px; }
+.dx-overall { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.dx-overall > span { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+.dx-overall b { font-family: var(--font-display); font-size: 18px; }
+.dx-overall .dx-track { grid-column: 1 / -1; }
+.rejected { text-align: center; padding: 40px 28px; }
+.rejected h4 { font-size: 19px; margin-bottom: 8px; }
+.rejected p { font-size: 14px; max-width: 380px; margin: 0 auto; }

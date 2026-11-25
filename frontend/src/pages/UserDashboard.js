@@ -5,7 +5,7 @@ import axios from "axios";
 import {
   UploadCloud, ScanLine, User, Hash, NotebookPen, Sparkles, Save, Download, RotateCcw, Sun, Contrast, ZoomIn,
   ZoomOut, Layers, Image as ImageIcon, Cpu, CheckCircle2, AlertTriangle, ShieldAlert, FlaskConical, FileImage,
-  History as HistoryIcon, SunMoon, ChevronDown, ChevronUp,
+  History as HistoryIcon, SunMoon, ChevronDown, ChevronUp, ImageOff,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import ProbBars from "../components/ProbBars";
@@ -58,6 +58,7 @@ export default function UserDashboard() {
   const [showAll, setShowAll] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState(null);
+  const [rejected, setRejected] = useState(null);
 
   const [bright, setBright] = useState(100);
   const [contrast, setContrast] = useState(100);
@@ -83,6 +84,7 @@ export default function UserDashboard() {
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setResult(null);
+    setRejected(null);
     setReportText("");
     setSavedId(null);
     setSelected(null);
@@ -101,16 +103,18 @@ export default function UserDashboard() {
     }
   };
 
-  const analyze = async () => {
+  const analyze = async (force = false) => {
     if (!file) return toast("error", "No image", "Upload a chest X-ray first.");
     setLoading(true);
     setResult(null);
+    setRejected(null);
     setStage(0);
     const timer = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 420);
     const started = Date.now();
     try {
       const fd = new FormData();
       fd.append("image", file);
+      if (force === true) fd.append("force", "1");
       const { data } = await axios.post(`${ML_URL}/predict`, fd, { timeout: 120000 });
       // let the scan animation breathe so the result doesn't "pop"
       const wait = Math.max(0, 1600 - (Date.now() - started));
@@ -124,7 +128,12 @@ export default function UserDashboard() {
       setSavedId(null);
       const n = data.findings?.length || 0;
       toast(n ? "info" : "success", "Analysis complete", n ? `${n} finding${n > 1 ? "s" : ""} above threshold.` : "No pathology above the alert threshold.");
+      (data.warnings || []).forEach((w) => toast("error", "Image warning", w));
     } catch (err) {
+      if (err.response?.data?.code === "not_cxr") {
+        setRejected(err.response.data);
+        return;
+      }
       const msg = err.response?.data?.error
         || (err.code === "ECONNABORTED" ? "The request timed out." : `ML server unreachable at ${ML_URL}. Start it with: python ml/server.py`);
       toast("error", "Analysis failed", msg);
@@ -198,7 +207,7 @@ export default function UserDashboard() {
             <span className={`chip ${ml === "online" ? "ok" : ml === "offline" ? "danger" : "neutral"}`}>
               <span className="dot pulse" /> ML engine {ml}
             </span>
-            <span className="chip neutral mono"><Cpu size={13} /> DenseNet-121</span>
+            <span className="chip neutral mono"><Cpu size={13} /> 5-model ensemble</span>
             <button className="btn btn-ghost btn-sm" onClick={() => nav("/history")}><HistoryIcon size={15} /> History</button>
           </div>
         </div>
@@ -334,7 +343,7 @@ export default function UserDashboard() {
                 <label>Clinical notes</label>
                 <textarea className="input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Symptoms, history, indication…" />
               </div>
-              <button className="btn btn-primary btn-lg btn-block analyze-btn" onClick={analyze} disabled={!file || loading || ml === "offline"}>
+              <button className="btn btn-primary btn-lg btn-block analyze-btn" onClick={() => analyze()} disabled={!file || loading || ml === "offline"}>
                 {loading ? <><span className="spinner" /> Analyzing…</> : <><Sparkles size={18} /> {result ? "Re-run analysis" : "Run AI analysis"}</>}
               </button>
               {!file && <p className="faint mono hint">Upload an image to enable analysis</p>}
@@ -391,7 +400,22 @@ export default function UserDashboard() {
                 </motion.div>
               )}
 
-              {!result && !loading && (
+              {rejected && !loading && (
+                <motion.section key="rejected" className="panel panel-pad rejected" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <div className="empty-ic" style={{ background: "var(--warn-soft)", color: "var(--warn)" }}><ImageOff size={22} /></div>
+                  <h4>This doesn't look like a chest X-ray</h4>
+                  <p className="muted">
+                    The AI only works on frontal chest radiographs. Results on other images (photos, screenshots, other body parts) would be meaningless,
+                    so it stopped here.
+                  </p>
+                  <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18, flexWrap: "wrap" }}>
+                    <button className="btn btn-primary" onClick={() => inputRef.current?.click()}><UploadCloud size={16} /> Upload another image</button>
+                    <button className="btn btn-ghost" onClick={() => analyze(true)}>Analyze anyway</button>
+                  </div>
+                </motion.section>
+              )}
+
+              {!result && !loading && !rejected && (
                 <motion.section key="empty" className="panel panel-pad empty-result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <div className="empty-ic"><Sparkles size={22} /></div>
                   <h4>Results will appear here</h4>

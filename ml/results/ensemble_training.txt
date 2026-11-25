@@ -1,0 +1,23 @@
+3695 patients: 2586 for fitting, 1109 held out for testing
+
+Cardiomegaly   n+= 324  test AUROC: base=0.914  avg=0.916  stack=0.919  stack+f=0.925   -> using stack+f: possible sens 90%/spec 81%, detected sens 54%/spec 95%
+Effusion       n+= 139  test AUROC: base=0.926  avg=0.918  stack=0.932  stack+f=0.931   -> using base: possible sens 88%/spec 90%, detected sens 67%/spec 96%
+Atelectasis    n+= 299  test AUROC: base=0.810  avg=0.818  stack=0.838  stack+f=0.843   -> using stack: possible sens 81%/spec 70%, detected sens 42%/spec 94%
+Lung Opacity   n+= 471  test AUROC: base=0.812  avg=0.798  stack=0.828  stack+f=0.835   -> using stack: possible sens 69%/spec 80%, detected sens 39%/spec 96%
+Pneumonia      n+=  37  test AUROC: base=0.779  avg=0.794  stack=0.882  stack+f=0.883   -> using stack: possible sens 69%/spec 86%, detected sens 54%/spec 96%
+Consolidation  n+=  27  test AUROC: base=0.870  avg=0.923  stack=0.932  stack+f=0.934   -> using avg: possible sens 73%/spec 92%, detected sens 46%/spec 96%
+Edema          n+=  41  test AUROC: base=0.947  avg=0.944  stack=0.953  stack+f=0.975   -> using stack: possible sens 100%/spec 82%, detected sens 67%/spec 95%
+Emphysema      n+= 137  test AUROC: base=0.895  avg=0.889  stack=0.915  stack+f=0.932   -> using stack+f: possible sens 92%/spec 82%, detected sens 60%/spec 95%
+Nodule         n+= 101  test AUROC: base=0.698  avg=0.739  stack=0.762  stack+f=0.787   -> using stack: possible sens 67%/spec 63%, detected sens 33%/spec 97%
+Fracture       n+=  82  test AUROC: base=0.716  avg=0.816  stack=0.834  stack+f=0.857   -> using avg: possible sens 71%/spec 71%, detected sens 36%/spec 96%
+Hernia         n+=  43  test AUROC: base=0.988  avg=0.994  stack=0.983  stack+f=0.989   -> using stack+f: possible sens 91%/spec 92%, detected sens 91%/spec 95%
+Infiltration   n+=  58  test AUROC: base=0.812  avg=0.762  stack=0.887  stack+f=0.879   -> using stack: possible sens 83%/spec 76%, detected sens 50%/spec 95%
+Pneumothorax   n+=  21  test AUROC: base=0.484  avg=0.524  stack=0.632  stack+f=0.621   -> using stack: possible sens 43%/spec 77%, detected sens 14%/spec 96%
+_any           n+=1126  test AUROC: base=0.810  stack=0.845  stack+f=0.853   -> using stack+f: possible sens 80%/spec 70%, detected sens 42%/spec 97%
+
+Held-out patients: 418 completely normal, 335 with at least one of these diseases
+  old (single model)     healthy patients: 0.98 false 'Detected' flags on average, 59% with none | sick patients: 89% flagged, most-likely diagnosis correct in 48% of flagged
+  new (ensemble)         healthy patients: 0.18 false 'Detected' flags on average, 91% with none | sick patients: 66% flagged, most-likely diagnosis correct in 59% of flagged
+
+mean held-out AUROC per disease: deployed model 0.819 -> new ensemble 0.869
+saved heads/heads.npz

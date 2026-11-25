@@ -26,6 +26,9 @@ curl -F "image=@some_xray.png" http://127.0.0.1:8000/predict
 | File | Purpose |
 |---|---|
 | `server.py` | Flask API: `/predict`, `/health` |
+| `ensemble.py` | **Deployed predictor**: 5-model ensemble, calibrated heads, input check, heatmaps |
+| `extract_features.py`, `train_heads.py` | Build the ensemble heads (see below) |
+| `heads/` | Fitted heads and held-out test report |
 | `classifier.py` | **Disease detection**: DenseNet-121 from TorchXRayVision (pretrained on NIH, CheXpert, MIMIC-CXR, PadChest and others). Returns probabilities for 18 pathologies, e.g. Atelectasis, Cardiomegaly, Consolidation, Edema, Effusion, Emphysema, Fibrosis, Hernia, Infiltration, Mass, Nodule, Pleural Thickening, Pneumonia, Pneumothorax, Lung Opacity, Lung Lesion, Fracture, Enlarged Cardiomediastinum |
 | `inference.py` | Our fine-tuned **Qwen2-VL-2B + LoRA** report generator (MLX, Apple Silicon). Loads `adapters/adapters.safetensors` |
 | `adapters/adapters.safetensors` | LoRA weights from `legacy/train_rapid.py` (500 Indiana image-report pairs, 1 epoch) |
@@ -34,7 +37,43 @@ curl -F "image=@some_xray.png" http://127.0.0.1:8000/predict
 | `results/` | Saved evaluation output |
 | `legacy/` | Original training and test scripts, kept for reference (their dataset paths point to `~/Downloads/...`, which no longer exists) |
 
-## Evaluation: full Indiana University set (3,695 frontal X-rays)
+## Deployed model: calibrated 5-model ensemble
+
+`server.py` loads `ensemble.py`, which combines:
+- 4 DenseNet-121 models (TorchXRayVision `all`, `pc`, `nih`, `chex`) and ResNet-50 at 512 px.
+- Small per-disease logistic "heads" (`heads/heads.npz`) fitted on 2,586 Indiana patients. Training them takes
+  under a minute; the big networks are **not** retrained.
+- Two alert levels per disease: **Detected** (about 95% specificity) and **Possible** (balanced, Youden).
+- An input check: the TorchXRayVision chest X-ray autoencoder plus a colour check reject images that aren't
+  chest X-rays (screenshots, photos, icons). Real X-rays reconstruct with error <= 0.069 (800 Indiana images),
+  while non-X-rays score >= 0.09; the cutoff is 0.075.
+
+Rebuild it (about 35 min to extract scores, then under 1 min to fit):
+
+```bash
+python ml/extract_features.py --csv indiana_reports.csv --images <images_normalized> --cache ../cache
+python ml/train_heads.py --csv indiana_reports.csv --cache ../cache --out ml/heads/heads.npz
+```
+
+### Held-out results (1,109 patients never used for fitting or tuning)
+
+| | Previous single model | Ensemble |
+|---|---|---|
+| Mean per-disease AUROC | 0.819 | **0.869** |
+| Healthy patients with a false "Detected" flag | 41% | **9%** |
+| "Most likely diagnosis" matches the radiologist | 48% | **59%** |
+| Sick patients flagged "Detected" | 89% | 66% (the rest show as "Possible") |
+
+Per disease (AUROC, before -> after): hernia 0.99 -> 0.99, edema 0.95 -> 0.95, emphysema 0.90 -> 0.93,
+effusion 0.93 -> 0.93, cardiomegaly 0.91 -> 0.93, consolidation 0.87 -> 0.92, infiltration 0.81 -> 0.89,
+pneumonia 0.78 -> 0.88, atelectasis 0.81 -> 0.84, lung opacity 0.81 -> 0.83, fracture 0.72 -> 0.82,
+nodule 0.70 -> 0.76, pneumothorax 0.48 -> 0.63 (only 21 cases; shown only when strongly detected).
+Full output: `results/ensemble_training.txt` and `heads/heads_report.json`.
+
+No chest X-ray AI is 100% accurate. Radiologists themselves often disagree, and these labels come from
+routine reports. Every result must be reviewed by a radiologist.
+
+## Earlier evaluation: single models on all 3,695 frontal X-rays
 
 Run with `ml/evaluate_full.py`. Raw output is in `ml/results/`. AUROC: 0.5 = chance, 1.0 = perfect.
 Ground truth is each radiologist's coded findings ("Problems" field).

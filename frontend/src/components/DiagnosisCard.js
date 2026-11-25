@@ -1,7 +1,28 @@
 import { motion } from "framer-motion";
-import { Stethoscope, CheckCircle2, AlertTriangle, MapPin, Timer } from "lucide-react";
+import { Stethoscope, CheckCircle2, AlertTriangle, MapPin, Timer, ShieldCheck } from "lucide-react";
 import { label, levelColor, PATHOLOGIES, summarize } from "../lib/pathologies";
 import { THRESHOLD } from "../config";
+
+const REL = {
+  high: { label: "High reliability", short: "High", tone: "ok" },
+  medium: { label: "Medium reliability", short: "Medium", tone: "warn" },
+  low: { label: "Low reliability", short: "Low", tone: "danger" },
+  unvalidated: { label: "Not validated", short: "Unverified", tone: "neutral" },
+};
+
+export function Reliability({ info, compact }) {
+  if (!info) return null;
+  const r = REL[info.level] || REL.unvalidated;
+  const tip = info.auroc != null
+    ? `Tested on held-out Indiana patients: AUROC ${info.auroc.toFixed(2)} (0.5 = chance, 1.0 = perfect)`
+    : "This condition had too few cases in the test data to measure accuracy";
+  return (
+    <span className={`chip ${r.tone} rel-chip`} title={tip} style={compact ? { height: 22, fontSize: 10.5 } : undefined}>
+      <ShieldCheck size={compact ? 11 : 12} /> {compact ? r.short : r.label}
+      {!compact && info.auroc != null && <span className="mono" style={{ opacity: 0.8 }}>· {info.auroc.toFixed(2)}</span>}
+    </span>
+  );
+}
 
 function Bar({ value, color, height = 10, delay = 0 }) {
   return (
@@ -25,6 +46,7 @@ export default function DiagnosisCard({ result, selected, onSelect }) {
   const clear = !primary;
   const main = primary || top;
   const color = clear ? "var(--ok)" : levelColor(main[1], threshold);
+  const rel = result.reliability || {};
   const conditions = [...detected.map((d) => [...d, "detected"]), ...possible.map((d) => [...d, "possible"])];
 
   return (
@@ -54,6 +76,7 @@ export default function DiagnosisCard({ result, selected, onSelect }) {
             <Bar value={main[1]} color={color} height={12} />
             <p className="dx-desc">
               {PATHOLOGIES[main[0]]?.region && <span className="chip neutral"><MapPin size={12} /> {PATHOLOGIES[main[0]].region}</span>}
+              <Reliability info={rel[main[0]]} />
               <span className="muted">{PATHOLOGIES[main[0]]?.desc}</span>
             </p>
           </>
@@ -90,6 +113,7 @@ export default function DiagnosisCard({ result, selected, onSelect }) {
                     <span className={`chip ${status === "detected" ? "danger" : "warn"}`} style={{ height: 22, fontSize: 11 }}>
                       {status === "detected" ? "Detected" : "Possible"}
                     </span>
+                    <Reliability info={rel[k]} compact />
                   </span>
                   <span className="dx-val mono" style={{ color: c }}>{(v * 100).toFixed(1)}%</span>
                 </div>
@@ -104,9 +128,17 @@ export default function DiagnosisCard({ result, selected, onSelect }) {
         <div className="dx-ok"><CheckCircle2 size={16} /> Lungs, heart and pleura look within normal limits to the model.</div>
       )}
 
+      {result.abnormal_score != null && (
+        <div className="dx-overall">
+          <span className="mono">Overall abnormality score</span>
+          <b style={{ color: levelColor(result.abnormal_score, threshold) }}>{(result.abnormal_score * 100).toFixed(0)}%</b>
+          <Bar value={result.abnormal_score} color={levelColor(result.abnormal_score, threshold)} height={6} />
+        </div>
+      )}
+
       <p className="faint dx-note">
-        Scores are calibrated so that {Math.round(threshold * 100)}% is the alert level (marked on each bar). They show how strongly
-        the image matches each condition, not a guaranteed chance of disease.
+        Each condition has its own alert level, tuned on 3,695 real patients and placed at 50% on every bar. Reliability shows how
+        accurate the AI proved for that condition on patients it never saw.
       </p>
     </section>
   );
