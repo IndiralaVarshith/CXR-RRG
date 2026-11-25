@@ -1,0 +1,23 @@
+# Production stack for a single server (e.g. Oracle Cloud Always Free ARM VM).
+#   cd deploy/oracle && docker compose up -d --build
+# Secrets live in deploy/oracle/.env (created by setup.sh, never committed).
+services:
+  app:
+    build: ../..
+    env_file: .env
+    restart: unless-stopped
+    expose: ["7860"]
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+volumes:
+  caddy_data:
+  caddy_config:
