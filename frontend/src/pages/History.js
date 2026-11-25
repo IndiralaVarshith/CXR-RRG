@@ -10,7 +10,6 @@ import ReportModal from "../components/ReportModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { BACKEND_URL, imageUrl } from "../config";
-import { getUser } from "../lib/auth";
 import { label, levelColor, RISK, riskFrom, summarize } from "../lib/pathologies";
 import { downloadReportPDF } from "../lib/pdf";
 import "./history.css";
@@ -33,7 +32,6 @@ function Thumb({ src }) {
 export default function History() {
   const toast = useToast();
   const nav = useNavigate();
-  const user = getUser();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -48,14 +46,14 @@ export default function History() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await axios.get(`${BACKEND_URL}/api/history`, { params: { email: user.email } });
+      const { data } = await axios.get(`${BACKEND_URL}/api/history`);
       setReports(data);
     } catch (err) {
-      setError(err.response?.data?.error || `Can't reach the backend at ${BACKEND_URL}.`);
+      setError(err.response?.data?.error || "Can't reach the server right now.");
     } finally {
       setLoading(false);
     }
-  }, [user.email]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -92,7 +90,7 @@ export default function History() {
     setBusy(true);
     try {
       if (confirm.type === "all") {
-        await axios.delete(`${BACKEND_URL}/api/history/clear/all`, { params: { email: user.email } });
+        await axios.delete(`${BACKEND_URL}/api/history/clear/all`);
         setReports([]);
         toast("success", "History cleared");
       } else {

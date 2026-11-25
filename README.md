@@ -235,6 +235,28 @@ Expected behavior:
 Backend can start without `MONGO_URI`, but DB routes will fail.
 Use this only for non-persistence UI debugging.
 
+## Deployment
+
+Everything (website, API, AI) runs in **one Docker container** on port 7860. `/ml/*` is proxied
+internally to the AI service, and saved X-ray images are stored in MongoDB (GridFS), so no disk is needed.
+
+### Run with Docker on your machine
+```bash
+docker compose up --build      # starts the app and a MongoDB container
+# open http://localhost:7860
+```
+
+### Hugging Face Spaces (free, 16 GB RAM)
+1. Create a Space with SDK **Docker** and upload this folder, using `deploy/hf-space/README.md` as the Space's `README.md`.
+2. In **Settings → Variables and secrets**, add `MONGO_URI` (for example a free MongoDB Atlas cluster with network
+   access `0.0.0.0/0`) and `JWT_SECRET` (`openssl rand -hex 32`). `DOCTOR_EMAIL` and `DOCTOR_PASSWORD` are optional.
+3. The Space builds the image (about 10 minutes) and serves the app at `https://<user>-<space>.hf.space`.
+
+### Security model
+- Sign-in returns a JWT (7-day expiry). Every report endpoint requires it.
+- Users only see, edit and delete their own reports. The doctor account (from env) sees all.
+- Login and register are rate-limited. Images are served by an unguessable 128-bit key.
+
 ## 8. API Reference
 
 Base backend URL: `http://127.0.0.1:5000`
@@ -421,12 +443,9 @@ Frontend (`frontend/package.json`):
 
 ## 14. Known Limitations
 
-- Frontend currently stores only email in localStorage (no token auth flow).
 - Login/Register/History pages still use hardcoded backend URLs.
 - The fine-tuned Qwen2-VL report generator collapsed to "normal" output (see `ml/README.md`); the classifier is used instead.
 - AI output is a screening aid only and must be reviewed by a radiologist.
-- `JWT_SECRET` is not actively used in backend routes yet.
-- No centralized role-based route guards on backend APIs.
 
 ## 15. License
 

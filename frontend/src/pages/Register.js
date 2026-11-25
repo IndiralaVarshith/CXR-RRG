@@ -36,13 +36,12 @@ export default function Register() {
     if (password.length < 6) return setError("Password must be at least 6 characters.");
     setLoading(true);
     try {
-      await axios.post(`${BACKEND_URL}/api/auth/register`, { name: name.trim(), email: email.trim(), password });
-      const { data } = await axios.post(`${BACKEND_URL}/api/auth/login`, { email: email.trim(), password });
-      setUser({ email: data.email, name: data.name || name.trim(), role: data.role });
+      const { data } = await axios.post(`${BACKEND_URL}/api/auth/register`, { name: name.trim(), email: email.trim(), password });
+      setUser({ token: data.token, email: data.email, name: data.name || name.trim(), role: data.role });
       toast("success", "Account created", "Your workspace is ready.");
       nav("/dashboard", { replace: true });
     } catch (err) {
-      if (!err.response) setError(`Can't reach the server at ${BACKEND_URL}. Is the backend running?`);
+      if (!err.response) setError("Can't reach the server. Please try again in a moment.");
       else setError(err.response.data?.error || "Registration failed.");
     } finally {
       setLoading(false);

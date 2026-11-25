@@ -1,0 +1,13 @@
+**/node_modules
+**/__pycache__
+**/.DS_Store
+.git
+.claude
+frontend/build
+backend/uploads
+backend/.env
+**/.env
+ml/adapters
+ml/legacy
+ml/results
+*.ipynb

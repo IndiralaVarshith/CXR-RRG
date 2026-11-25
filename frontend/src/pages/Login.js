@@ -24,11 +24,11 @@ export default function Login() {
     setLoading(true);
     try {
       const { data } = await axios.post(`${BACKEND_URL}/api/auth/login`, { email: email.trim(), password });
-      setUser({ email: data.email, name: data.name || (data.role === "doctor" ? "Doctor" : ""), role: data.role });
+      setUser({ token: data.token, email: data.email, name: data.name || (data.role === "doctor" ? "Doctor" : ""), role: data.role });
       toast("success", "Signed in", `Welcome back${data.name ? `, ${data.name}` : ""}.`);
       nav(loc.state?.from || "/dashboard", { replace: true });
     } catch (err) {
-      if (!err.response) setError(`Can't reach the server at ${BACKEND_URL}. Is the backend running?`);
+      if (!err.response) setError("Can't reach the server. Please try again in a moment.");
       else setError(err.response.data?.error || "Invalid email or password.");
     } finally {
       setLoading(false);

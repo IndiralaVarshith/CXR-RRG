@@ -135,7 +135,7 @@ export default function UserDashboard() {
         return;
       }
       const msg = err.response?.data?.error
-        || (err.code === "ECONNABORTED" ? "The request timed out." : `ML server unreachable at ${ML_URL}. Start it with: python ml/server.py`);
+        || (err.code === "ECONNABORTED" ? "The request timed out." : "The AI service is not reachable right now. Please try again in a moment.");
       toast("error", "Analysis failed", msg);
     } finally {
       clearInterval(timer);
@@ -163,7 +163,7 @@ export default function UserDashboard() {
       setSavedId(data.report?._id || "saved");
       toast("success", "Report saved", "It's now in the patient history.");
     } catch (err) {
-      toast("error", "Save failed", err.response?.data?.error || `Backend unreachable at ${BACKEND_URL}.`);
+      toast("error", "Save failed", err.response?.data?.error || "The server is not reachable right now.");
     } finally {
       setSaving(false);
     }
@@ -216,8 +216,12 @@ export default function UserDashboard() {
           <motion.div className="offline-banner" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
             <AlertTriangle size={18} />
             <div>
-              <b>The ML engine isn't running.</b> Start it in a terminal:
-              <code>cd cxr-rrg && ../.venv/bin/python ml/server.py</code>
+              {process.env.NODE_ENV === "production" ? (
+                <><b>The AI engine is starting up or unavailable.</b> It can take a minute after the site wakes up. Please wait and try again.</>
+              ) : (
+                <><b>The ML engine isn't running.</b> Start it in a terminal:
+                <code>cd cxr-rrg && ../.venv/bin/python ml/server.py</code></>
+              )}
             </div>
           </motion.div>
         )}
