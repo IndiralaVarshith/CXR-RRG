@@ -42,3 +42,17 @@ export const riskFrom = (aiReport) => {
   }
   return null;
 };
+
+// Radiographic signs that describe *what is seen* rather than a disease.
+// When a specific disease is also flagged, it is shown as the primary diagnosis.
+const SIGNS = new Set(["Lung Opacity", "Infiltration", "Lung Lesion", "Enlarged Cardiomediastinum"]);
+const BORDERLINE = 0.4;
+
+export function summarize(probabilities = {}, threshold = 0.5) {
+  const rows = Object.entries(probabilities).sort((a, b) => b[1] - a[1]);
+  const detected = rows.filter(([, v]) => v >= threshold);
+  const possible = rows.filter(([, v]) => v >= BORDERLINE && v < threshold);
+  const specific = detected.filter(([k]) => !SIGNS.has(k));
+  const primary = specific[0] || detected[0] || null;
+  return { rows, detected, possible, primary, top: rows[0] };
+}

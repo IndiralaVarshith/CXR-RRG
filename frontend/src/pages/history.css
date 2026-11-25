@@ -60,3 +60,10 @@
   .stats { grid-template-columns: 1fr 1fr; }
   .rm-body { grid-template-columns: 1fr; }
 }
+
+.h-dx { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 4px 8px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.h-dx > span:first-child { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.h-dx b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.h-dx > span:nth-child(3) { font-size: 13px; font-weight: 600; }
+.h-dx-bar { grid-column: 1 / -1; height: 5px; border-radius: 5px; background: var(--input-bg); overflow: hidden; }
+.h-dx-bar span { display: block; height: 100%; border-radius: 5px; }

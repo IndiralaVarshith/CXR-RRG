@@ -1,0 +1,95 @@
+3851 patients with images; selecting frontal views...
+3695 frontal studies (34s)
+
+== densenet121-res224-all  (217s)  mean per-disease AUROC 0.827
+  Cardiomegaly               AUROC 0.918  (n+= 324)  sens 84%  spec 83%
+  Effusion                   AUROC 0.928  (n+= 139)  sens 83%  spec 91%
+  Atelectasis                AUROC 0.810  (n+= 299)  sens 70%  spec 77%
+  Lung Opacity               AUROC 0.810  (n+= 471)  sens 57%  spec 87%
+  Pneumonia                  AUROC 0.793  (n+=  37)  sens 46%  spec 95%
+  Consolidation              AUROC 0.890  (n+=  27)  sens 85%  spec 79%
+  Edema                      AUROC 0.914  (n+=  41)  sens 56%  spec 95%
+  Emphysema                  AUROC 0.863  (n+= 137)  sens 82%  spec 71%
+  Nodule                     AUROC 0.635  (n+= 101)  sens 50%  spec 66%
+  Mass                       AUROC 0.906  (n+=  15)  sens 93%  spec 70%
+  Fracture                   AUROC 0.698  (n+=  82)  sens 38%  spec 84%
+  Hernia                     AUROC 0.975  (n+=  43)  sens 86%  spec 97%
+  Infiltration               AUROC 0.761  (n+=  58)  sens 64%  spec 75%
+  Pneumothorax               AUROC 0.676  (n+=  21)  sens 38%  spec 86%
+  _ANY (disease vs normal)   AUROC 0.852  (n+=1126)  sens 90%  spec 54%
+
+== densenet121-res224-chex  (233s)  mean per-disease AUROC 0.754
+  Cardiomegaly               AUROC 0.806  (n+= 324)  sens 75%  spec 72%
+  Effusion                   AUROC 0.842  (n+= 139)  sens 68%  spec 83%
+  Atelectasis                AUROC 0.737  (n+= 299)  sens 64%  spec 71%
+  Lung Opacity               AUROC 0.730  (n+= 471)  sens 62%  spec 71%
+  Pneumonia                  AUROC 0.735  (n+=  37)  sens 46%  spec 89%
+  Consolidation              AUROC 0.842  (n+=  27)  sens 78%  spec 79%
+  Edema                      AUROC 0.864  (n+=  41)  sens 93%  spec 50%
+  Fracture                   AUROC 0.614  (n+=  82)  sens 55%  spec 58%
+  Pneumothorax               AUROC 0.619  (n+=  21)  sens 5%  spec 99%
+  _ANY (disease vs normal)   AUROC 0.759  (n+=1126)  sens 77%  spec 59%
+
+== densenet121-res224-nih  (229s)  mean per-disease AUROC 0.734
+  Cardiomegaly               AUROC 0.863  (n+= 324)  sens 47%  spec 92%
+  Effusion                   AUROC 0.882  (n+= 139)  sens 75%  spec 85%
+  Atelectasis                AUROC 0.761  (n+= 299)  sens 66%  spec 72%
+  Pneumonia                  AUROC 0.582  (n+=  37)  sens 32%  spec 80%
+  Consolidation              AUROC 0.865  (n+=  27)  sens 93%  spec 55%
+  Edema                      AUROC 0.777  (n+=  41)  sens 34%  spec 94%
+  Emphysema                  AUROC 0.727  (n+= 137)  sens 72%  spec 60%
+  Nodule                     AUROC 0.566  (n+= 101)  sens 28%  spec 78%
+  Mass                       AUROC 0.813  (n+=  15)  sens 60%  spec 76%
+  Hernia                     AUROC 0.761  (n+=  43)  sens 77%  spec 67%
+  Infiltration               AUROC 0.618  (n+=  58)  sens 33%  spec 84%
+  Pneumothorax               AUROC 0.598  (n+=  21)  sens 29%  spec 78%
+  _ANY (disease vs normal)   AUROC 0.798  (n+=1126)  sens 92%  spec 38%
+
+== densenet121-res224-mimic_ch  (229s)  mean per-disease AUROC 0.698
+  Cardiomegaly               AUROC 0.741  (n+= 324)  sens 96%  spec 32%
+  Effusion                   AUROC 0.838  (n+= 139)  sens 87%  spec 62%
+  Atelectasis                AUROC 0.717  (n+= 299)  sens 83%  spec 46%
+  Lung Opacity               AUROC 0.683  (n+= 471)  sens 88%  spec 30%
+  Pneumonia                  AUROC 0.710  (n+=  37)  sens 86%  spec 33%
+  Consolidation              AUROC 0.706  (n+=  27)  sens 93%  spec 28%
+  Edema                      AUROC 0.777  (n+=  41)  sens 93%  spec 30%
+  Fracture                   AUROC 0.501  (n+=  82)  sens 66%  spec 36%
+  Pneumothorax               AUROC 0.607  (n+=  21)  sens 100%  spec 10%
+  _ANY (disease vs normal)   AUROC 0.677  (n+=1126)  sens 97%  spec 10%
+
+== densenet121-res224-pc  (226s)  mean per-disease AUROC 0.809
+  Cardiomegaly               AUROC 0.904  (n+= 324)  sens 78%  spec 86%
+  Effusion                   AUROC 0.885  (n+= 139)  sens 65%  spec 92%
+  Atelectasis                AUROC 0.772  (n+= 299)  sens 75%  spec 63%
+  Pneumonia                  AUROC 0.822  (n+=  37)  sens 84%  spec 65%
+  Consolidation              AUROC 0.889  (n+=  27)  sens 93%  spec 72%
+  Edema                      AUROC 0.912  (n+=  41)  sens 73%  spec 90%
+  Emphysema                  AUROC 0.877  (n+= 137)  sens 63%  spec 90%
+  Nodule                     AUROC 0.614  (n+= 101)  sens 46%  spec 72%
+  Mass                       AUROC 0.842  (n+=  15)  sens 73%  spec 81%
+  Fracture                   AUROC 0.719  (n+=  82)  sens 57%  spec 77%
+  Hernia                     AUROC 0.943  (n+=  43)  sens 77%  spec 94%
+  Infiltration               AUROC 0.741  (n+=  58)  sens 67%  spec 72%
+  Pneumothorax               AUROC 0.603  (n+=  21)  sens 38%  spec 75%
+  _ANY (disease vs normal)   AUROC 0.824  (n+=1126)  sens 89%  spec 52%
+/opt/homebrew/Cellar/python@3.11/3.11.15/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 6 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+3851 patients with images; selecting frontal views...
+3695 frontal studies (43s)
+
+== resnet50-res512-all  (1094s)  mean per-disease AUROC 0.828
+  Cardiomegaly               AUROC 0.885  (n+= 324)  sens 3%  spec 100%
+  Effusion                   AUROC 0.918  (n+= 139)  sens 16%  spec 100%
+  Atelectasis                AUROC 0.791  (n+= 299)  sens 2%  spec 100%
+  Lung Opacity               AUROC 0.717  (n+= 471)  sens 11%  spec 99%
+  Pneumonia                  AUROC 0.814  (n+=  37)  sens 3%  spec 100%
+  Consolidation              AUROC 0.912  (n+=  27)  sens 4%  spec 100%
+  Edema                      AUROC 0.881  (n+=  41)  sens 0%  spec 100%
+  Emphysema                  AUROC 0.818  (n+= 137)  sens 0%  spec 100%
+  Nodule                     AUROC 0.733  (n+= 101)  sens 5%  spec 100%
+  Mass                       AUROC 0.940  (n+=  15)  sens 20%  spec 100%
+  Fracture                   AUROC 0.750  (n+=  82)  sens 13%  spec 99%
+  Hernia                     AUROC 0.933  (n+=  43)  sens 30%  spec 100%
+  Infiltration               AUROC 0.724  (n+=  58)  sens 0%  spec 100%
+  Pneumothorax               AUROC 0.777  (n+=  21)  sens 0%  spec 100%
+  _ANY (disease vs normal)   AUROC 0.805  (n+=1126)  sens 15%  spec 99%

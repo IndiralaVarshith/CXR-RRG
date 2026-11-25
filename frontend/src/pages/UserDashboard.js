@@ -4,16 +4,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import axios from "axios";
 import {
   UploadCloud, ScanLine, User, Hash, NotebookPen, Sparkles, Save, Download, RotateCcw, Sun, Contrast, ZoomIn,
-  ZoomOut, Layers, Image as ImageIcon, Timer, Cpu, CheckCircle2, AlertTriangle, ShieldAlert, FlaskConical, FileImage,
-  History as HistoryIcon, SunMoon,
+  ZoomOut, Layers, Image as ImageIcon, Cpu, CheckCircle2, AlertTriangle, ShieldAlert, FlaskConical, FileImage,
+  History as HistoryIcon, SunMoon, ChevronDown, ChevronUp,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import ProbBars from "../components/ProbBars";
-import RiskGauge from "../components/RiskGauge";
+import DiagnosisCard from "../components/DiagnosisCard";
 import { useToast } from "../components/Toast";
-import { BACKEND_URL, ML_URL, THRESHOLD } from "../config";
+import { BACKEND_URL, ML_URL } from "../config";
 import { getUser } from "../lib/auth";
-import { label, PATHOLOGIES, RISK, riskFrom } from "../lib/pathologies";
+import { label, PATHOLOGIES, riskFrom } from "../lib/pathologies";
 import { downloadReportPDF } from "../lib/pdf";
 import "./dashboard.css";
 
@@ -55,6 +55,7 @@ export default function UserDashboard() {
   const [reportText, setReportText] = useState("");
   const [selected, setSelected] = useState(null);
   const [mode, setMode] = useState("original");
+  const [showAll, setShowAll] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState(null);
 
@@ -164,7 +165,7 @@ export default function UserDashboard() {
       id: savedId && savedId !== "saved" ? savedId : null,
       patientName, ectNumber, notes, reportText,
       userName: user.name, userEmail: user.email, createdAt: Date.now(),
-      probabilities: result?.probabilities, findings: result?.findings, risk: result?.risk, model: result?.model,
+      probabilities: result?.probabilities, findings: result?.findings, risk: result?.risk || (result ? riskFrom(result) : null), model: result?.model,
       image: file, heatmap: selected ? result?.heatmaps?.[selected] : null, heatmapLabel: selected,
     }).then(() => toast("success", "PDF exported"));
 
@@ -179,8 +180,6 @@ export default function UserDashboard() {
     pickFile(e.dataTransfer.files?.[0]);
   };
 
-  const risk = result ? RISK[result.risk || riskFrom(result)] : null;
-  const peak = result ? Math.max(...Object.values(result.probabilities)) : 0;
   const heatKeys = Object.keys(result?.heatmaps || {}).sort((a, b) => result.probabilities[b] - result.probabilities[a]);
   const viewSrc = mode === "heatmap" && selected && result?.heatmaps?.[selected] ? result.heatmaps[selected] : preview;
   const filter = `brightness(${bright}%) contrast(${contrast}%) ${invert ? "invert(1)" : ""}`;
@@ -358,32 +357,21 @@ export default function UserDashboard() {
 
               {result && !loading && (
                 <motion.div key="result" className="results" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                  <section className={`panel panel-pad risk-card ${risk.tone}`}>
-                    <RiskGauge value={peak} tone={risk.tone} size={132} />
-                    <div className="risk-body">
-                      <span className={`chip ${risk.tone}`}>{risk.tone === "ok" ? <CheckCircle2 size={13} /> : <ShieldAlert size={13} />} {risk.label}</span>
-                      <p className="muted" style={{ margin: "10px 0 12px", fontSize: 14 }}>{risk.text}</p>
-                      <div className="finding-chips">
-                        {result.findings.length ? result.findings.map((f) => (
-                          <span key={f} className="chip danger" title={PATHOLOGIES[f]?.desc}>{label(f)}</span>
-                        )) : <span className="chip ok">Clear</span>}
-                      </div>
-                      <div className="risk-meta mono faint">
-                        {result.inference_ms != null && <span><Timer size={12} /> {result.inference_ms} ms</span>}
-                        <span>threshold {Math.round((result.threshold || THRESHOLD) * 100)}%</span>
-                      </div>
-                    </div>
-                  </section>
+                  <DiagnosisCard result={result} selected={mode === "heatmap" ? selected : null} onSelect={(k) => { setSelected(k); setMode("heatmap"); }} />
 
                   <section className="panel panel-pad">
-                    <div className="panel-title">
-                      <h3><Layers size={16} /> Pathology probabilities</h3>
-                      <span className="faint mono" style={{ fontSize: 11 }}>click a finding to view its map</span>
-                    </div>
-                    <ProbBars probabilities={result.probabilities} selected={mode === "heatmap" ? selected : null} selectable={heatKeys} onSelect={(k) => { setSelected(k); setMode("heatmap"); }} />
-                    {selected && PATHOLOGIES[selected] && (
-                      <div className="explain-box">
-                        <b>{label(selected)}</b>: <span className="muted">{PATHOLOGIES[selected].desc}</span>
+                    <button className="all-toggle" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
+                      <span className="panel-title" style={{ margin: 0 }}><h3><Layers size={16} /> All 18 conditions</h3></span>
+                      <span className="chip neutral">{showAll ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {showAll ? "Hide" : "Show"}</span>
+                    </button>
+                    {showAll && (
+                      <div style={{ marginTop: 14 }}>
+                        <ProbBars probabilities={result.probabilities} selected={mode === "heatmap" ? selected : null} selectable={heatKeys} onSelect={(k) => { setSelected(k); setMode("heatmap"); }} />
+                        {selected && PATHOLOGIES[selected] && (
+                          <div className="explain-box">
+                            <b>{label(selected)}</b>: <span className="muted">{PATHOLOGIES[selected].desc}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </section>

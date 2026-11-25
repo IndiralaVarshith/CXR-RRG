@@ -51,3 +51,11 @@
 @media (max-width: 1100px) { .pipe { grid-template-columns: repeat(3, 1fr); } .pipe::before { display: none; } }
 @media (max-width: 860px) { .card-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .pipe { grid-template-columns: 1fr 1fr; } .spec > div { grid-template-columns: 1fr; gap: 2px; } }
+
+.dz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.dz { padding: 14px 16px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.dz-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 600; font-size: 14px; }
+.dz-top b { font-size: 15px; }
+.dz-bar { height: 6px; border-radius: 6px; background: var(--input-bg); margin: 10px 0 8px; overflow: hidden; }
+.dz-bar span { display: block; height: 100%; border-radius: 6px; }
+.dz-meta { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: .04em; }

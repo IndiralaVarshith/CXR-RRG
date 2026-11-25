@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { label, RISK } from "./pathologies";
+import { label, RISK, summarize } from "./pathologies";
 
 const TEAL = [10, 159, 154];
 const INK = [11, 22, 34];
@@ -67,7 +67,34 @@ export async function downloadReportPDF(data) {
     margin: { left: M, right: M },
   });
 
-  let y = doc.lastAutoTable.finalY + 6;
+  let y = doc.lastAutoTable.finalY + 4;
+
+  // primary diagnosis band
+  if (data.probabilities && Object.keys(data.probabilities).length) {
+    const { primary } = summarize(data.probabilities);
+    const pos = !!primary;
+    doc.setFillColor(...(pos ? [253, 236, 236] : [231, 246, 238]));
+    doc.roundedRect(M, y, W - 2 * M, 16, 2, 2, "F");
+    doc.setFontSize(8);
+    doc.setTextColor(...GREY);
+    doc.text("MOST LIKELY DIAGNOSIS", M + 5, y + 6);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(...(pos ? [190, 40, 46] : [19, 120, 72]));
+    doc.text(pos ? label(primary[0]) : "No disease detected", M + 5, y + 12.5);
+    if (pos) {
+      doc.text(`${(primary[1] * 100).toFixed(0)}%`, W - M - 5, y + 12.5, { align: "right" });
+      const bx = M + 80, bw = W - 2 * M - 105;
+      doc.setFillColor(235, 220, 220);
+      doc.roundedRect(bx, y + 8.5, bw, 3, 1.5, 1.5, "F");
+      doc.setFillColor(224, 57, 63);
+      doc.roundedRect(bx, y + 8.5, Math.max(2, bw * primary[1]), 3, 1.5, 1.5, "F");
+    }
+    doc.setFont("helvetica", "normal");
+    y += 22;
+  } else {
+    y += 2;
+  }
 
   // images
   const img = await toDataUrl(data.image);

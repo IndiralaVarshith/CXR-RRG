@@ -23,11 +23,24 @@ const PIPE = [
   { icon: FileText, t: "Report", d: "Structured findings and impression, editable by a clinician" },
 ];
 
+// Full Indiana University set: 3,695 frontal X-rays (ml/evaluate_full.py, ml/results/)
 const EVAL = [
-  { m: "TorchXRayVision DenseNet-121 (deployed)", n: "40", auc: "0.895", sens: "90%", spec: "70%", t: "0.12 s", ok: true },
-  { m: "TorchXRayVision DenseNet-121 (deployed)", n: "200", auc: "0.742", sens: "81%", spec: "54%", t: "0.12 s", ok: true },
-  { m: "Fine-tuned Qwen2-VL-2B + LoRA (experimental)", n: "40", auc: "≈0.50", sens: "0%", spec: "100%", t: "4.8 s", ok: false },
+  { m: "DenseNet-121 \u00b7 all (deployed)", seen: true, auc: "0.852", mean: "0.827", sens: "90%", spec: "54%", t: "0.12 s", ok: true },
+  { m: "ResNet-50 \u00b7 512px (never saw Indiana)", seen: false, auc: "0.805", mean: "0.828", sens: "15%*", spec: "99%", t: "\u2248 1 s", ok: true },
+  { m: "DenseNet-121 \u00b7 PadChest (never saw Indiana)", seen: false, auc: "0.824", mean: "0.809", sens: "89%", spec: "52%", t: "0.12 s", ok: true },
+  { m: "DenseNet-121 \u00b7 CheXpert", seen: false, auc: "0.759", mean: "0.754", sens: "77%", spec: "59%", t: "0.12 s", ok: true },
+  { m: "DenseNet-121 \u00b7 NIH", seen: false, auc: "0.798", mean: "0.734", sens: "92%", spec: "38%", t: "0.12 s", ok: true },
+  { m: "Fine-tuned Qwen2-VL-2B + LoRA (ours)", seen: false, auc: "\u22480.50", mean: "-", sens: "0%", spec: "100%", t: "4.8 s", ok: false },
 ];
+
+// Deployed model, per disease (AUROC, number of positive patients)
+const PER_DISEASE = [
+  ["Hiatal hernia", 0.975, 43], ["Pleural effusion", 0.928, 139], ["Cardiomegaly", 0.918, 324], ["Edema", 0.914, 41],
+  ["Mass", 0.906, 15], ["Consolidation", 0.89, 27], ["Emphysema", 0.863, 137], ["Atelectasis", 0.81, 299],
+  ["Lung opacity", 0.81, 471], ["Pneumonia", 0.793, 37], ["Infiltration", 0.761, 58], ["Fracture", 0.698, 82],
+  ["Pneumothorax", 0.676, 21], ["Nodule", 0.635, 101],
+];
+const grade = (a) => (a >= 0.9 ? ["Excellent", "var(--ok)"] : a >= 0.8 ? ["Good", "var(--accent)"] : a >= 0.75 ? ["Fair", "var(--warn)"] : ["Weak", "var(--danger)"]);
 
 export default function Features() {
   return (
@@ -113,19 +126,41 @@ export default function Features() {
         <motion.div className="section-head" {...reveal}>
           <span className="eyebrow">Evaluation</span>
           <h2>Measured, not marketed.</h2>
-          <p>Held-out Indiana University chest X-rays (frontal views, patients never seen in training), balanced normal vs abnormal.</p>
+          <p>
+            Tested on every frontal chest X-ray in the Indiana University dataset: <b>3,695 patients</b>, with each radiologist's coded
+            findings used as ground truth. AUROC measures how well the score separates patients with a disease from those without it
+            (0.5 = coin flip, 1.0 = perfect).
+          </p>
         </motion.div>
-        <motion.div className="panel table-wrap" {...reveal}>
+
+        <motion.div className="panel panel-pad" {...reveal}>
+          <div className="panel-title"><h3><CheckCircle2 size={16} /> Deployed model · accuracy per disease</h3></div>
+          <div className="dz-grid">
+            {PER_DISEASE.map(([name, a, n], i) => {
+              const [g, c] = grade(a);
+              return (
+                <motion.div key={name} className="dz" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.03 }}>
+                  <div className="dz-top"><span>{name}</span><b className="mono" style={{ color: c }}>{a.toFixed(3)}</b></div>
+                  <div className="dz-bar"><motion.span style={{ background: c }} initial={{ width: 0 }} whileInView={{ width: `${((a - 0.5) / 0.5) * 100}%` }} viewport={{ once: true }} transition={{ duration: 0.9, delay: i * 0.03 }} /></div>
+                  <div className="dz-meta mono faint"><span style={{ color: c }}>{g}</span><span>{n} patients</span></div>
+                </motion.div>
+              );
+            })}
+          </div>
+          <p className="faint" style={{ fontSize: 12.5, marginTop: 16 }}>Bars run from 0.5 (chance) to 1.0 (perfect). Weak areas: small nodules, pneumothorax and fractures. Don't rely on the AI for these.</p>
+        </motion.div>
+
+        <motion.div className="panel table-wrap" style={{ marginTop: 20 }} {...reveal}>
           <table className="eval">
             <thead>
-              <tr><th>Model</th><th>Images</th><th>AUROC</th><th>Sensitivity</th><th>Specificity</th><th>Latency</th></tr>
+              <tr><th>Model</th><th>Sick vs healthy AUROC</th><th>Mean per-disease AUROC</th><th>Sensitivity</th><th>Specificity</th><th>Latency</th></tr>
             </thead>
             <tbody>
               {EVAL.map((r, i) => (
                 <tr key={i} className={r.ok ? "" : "bad"}>
                   <td>{r.ok ? <CheckCircle2 size={16} className="ok-ic" /> : <AlertTriangle size={16} className="bad-ic" />} {r.m}</td>
-                  <td className="mono">{r.n}</td>
                   <td className="mono strong">{r.auc}</td>
+                  <td className="mono">{r.mean}</td>
                   <td className="mono">{r.sens}</td>
                   <td className="mono">{r.spec}</td>
                   <td className="mono">{r.t}</td>
@@ -134,9 +169,11 @@ export default function Features() {
             </tbody>
           </table>
         </motion.div>
-        <motion.p className="faint" style={{ fontSize: 13, marginTop: 14 }} {...reveal}>
-          The experimental report generator collapsed during fine-tuning (500 samples, 1 epoch): it produced a "normal" report for
-          every image. It's kept for research but disabled by default. Reproduce with <span className="mono">ml/evaluate.py</span>.
+        <motion.p className="faint" style={{ fontSize: 13, marginTop: 14, lineHeight: 1.6 }} {...reveal}>
+          Honesty notes: the deployed model's training data included part of this dataset (OpenI), so its scores are slightly
+          optimistic. Models that never saw it score about the same (0.81–0.83 mean AUROC), which confirms the accuracy holds up.
+          *ResNet-50 is not calibrated to the 50% alert level, hence its low sensitivity. Our fine-tuned report generator collapsed
+          (it called every X-ray normal) and is disabled. Reproduce with <span className="mono">ml/evaluate_full.py</span>.
         </motion.p>
       </section>
 

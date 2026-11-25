@@ -67,10 +67,27 @@ def risk_level(probs):
     return "low"
 
 
+# Radiographic signs (what is seen) rather than diseases. When a specific disease
+# is also flagged, it is reported as the primary diagnosis instead.
+SIGNS = {"Lung Opacity", "Infiltration", "Lung Lesion", "Enlarged Cardiomediastinum"}
+
+
+def primary_diagnosis(probs):
+    positives = [(k, v) for k, v in probs.items() if v >= THRESHOLD]
+    specific = [(k, v) for k, v in positives if k not in SIGNS]
+    return (specific or positives or [None])[0]
+
+
 def build_report(probs):
     positives = [(k, v) for k, v in probs.items() if v >= THRESHOLD]
     borderline = [(k, v) for k, v in probs.items() if 0.4 <= v < THRESHOLD]
-    lines = ["FINDINGS"]
+    primary = primary_diagnosis(probs)
+    lines = [
+        f"MOST LIKELY DIAGNOSIS: {readable(primary[0])} ({primary[1]:.0%} AI confidence)"
+        if primary else "MOST LIKELY DIAGNOSIS: No disease detected",
+        "",
+        "FINDINGS",
+    ]
     if positives:
         lines += [f"- {readable(k)} suspected ({v:.0%} probability)." for k, v in positives]
     else:
@@ -122,6 +139,7 @@ def predict():
             "heatmaps": res["heatmaps"],
             "crop": res["crop"],
             "risk": risk_level(probs),
+            "primary": (lambda p: {"name": p[0], "probability": round(p[1], 4)} if p else None)(primary_diagnosis(probs)),
             "threshold": THRESHOLD,
             "model": f"torchxrayvision/{WEIGHTS}",
         }

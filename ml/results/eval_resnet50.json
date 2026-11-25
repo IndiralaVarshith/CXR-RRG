@@ -1,0 +1,98 @@
+{
+  "n_studies": 3695,
+  "n_normal": 1346,
+  "models": {
+    "resnet50-res512-all": {
+      "Cardiomegaly": {
+        "auroc": 0.885,
+        "n_pos": 324,
+        "sensitivity": 0.034,
+        "specificity": 1.0
+      },
+      "Effusion": {
+        "auroc": 0.918,
+        "n_pos": 139,
+        "sensitivity": 0.165,
+        "specificity": 0.999
+      },
+      "Atelectasis": {
+        "auroc": 0.791,
+        "n_pos": 299,
+        "sensitivity": 0.02,
+        "specificity": 0.999
+      },
+      "Lung Opacity": {
+        "auroc": 0.717,
+        "n_pos": 471,
+        "sensitivity": 0.113,
+        "specificity": 0.986
+      },
+      "Pneumonia": {
+        "auroc": 0.814,
+        "n_pos": 37,
+        "sensitivity": 0.027,
+        "specificity": 1.0
+      },
+      "Consolidation": {
+        "auroc": 0.912,
+        "n_pos": 27,
+        "sensitivity": 0.037,
+        "specificity": 1.0
+      },
+      "Edema": {
+        "auroc": 0.881,
+        "n_pos": 41,
+        "sensitivity": 0.0,
+        "specificity": 1.0
+      },
+      "Emphysema": {
+        "auroc": 0.818,
+        "n_pos": 137,
+        "sensitivity": 0.0,
+        "specificity": 1.0
+      },
+      "Nodule": {
+        "auroc": 0.733,
+        "n_pos": 101,
+        "sensitivity": 0.05,
+        "specificity": 0.999
+      },
+      "Mass": {
+        "auroc": 0.94,
+        "n_pos": 15,
+        "sensitivity": 0.2,
+        "specificity": 0.998
+      },
+      "Fracture": {
+        "auroc": 0.75,
+        "n_pos": 82,
+        "sensitivity": 0.134,
+        "specificity": 0.989
+      },
+      "Hernia": {
+        "auroc": 0.933,
+        "n_pos": 43,
+        "sensitivity": 0.302,
+        "specificity": 0.999
+      },
+      "Infiltration": {
+        "auroc": 0.724,
+        "n_pos": 58,
+        "sensitivity": 0.0,
+        "specificity": 0.998
+      },
+      "Pneumothorax": {
+        "auroc": 0.777,
+        "n_pos": 21,
+        "sensitivity": 0.0,
+        "specificity": 1.0
+      },
+      "_ANY (disease vs normal)": {
+        "auroc": 0.805,
+        "n_pos": 1126,
+        "sensitivity": 0.148,
+        "specificity": 0.987
+      }
+    }
+  }
+}

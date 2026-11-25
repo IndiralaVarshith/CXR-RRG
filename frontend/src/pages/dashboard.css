@@ -168,3 +168,35 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 0; bo
   .tool-btns { flex-wrap: wrap; }
   .seg button { padding: 0 10px; }
 }
+
+/* ---------- AI diagnosis card ---------- */
+.dx { overflow: hidden; }
+.dx::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: .55; }
+.dx.flag::after { background: radial-gradient(ellipse at 0% 0%, var(--danger-soft), transparent 55%); }
+.dx.clear::after { background: radial-gradient(ellipse at 0% 0%, var(--ok-soft), transparent 55%); }
+.dx > * { position: relative; z-index: 1; }
+.dx-kicker { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+.dx-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 6px 0 14px; }
+.dx-head h2 { font-size: clamp(28px, 3vw, 38px); letter-spacing: -0.03em; line-height: 1.05; }
+.dx-pct { font-family: var(--font-display); font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+.dx-pct span { font-size: 22px; margin-left: 2px; }
+.dx-track { position: relative; width: 100%; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); overflow: visible; }
+.dx-fill { height: 100%; border-radius: 999px; }
+.dx-threshold { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--text-3); opacity: .7; }
+.dx-desc { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; font-size: 14px; line-height: 1.5; }
+.dx-list { margin-top: 22px; display: flex; flex-direction: column; gap: 8px; }
+.dx-list-head { display: flex; justify-content: space-between; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); padding: 0 2px 4px; }
+.dx-row {
+  display: flex; flex-direction: column; gap: 9px; width: 100%; text-align: left;
+  padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border);
+  transition: border-color .2s, background .2s, transform .2s var(--ease);
+}
+.dx-row:not(:disabled):hover { border-color: var(--border-strong); transform: translateX(2px); }
+.dx-row:disabled { cursor: default; }
+.dx-row.on { border-color: var(--accent); background: var(--accent-soft); }
+.dx-row-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.dx-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14.5px; flex-wrap: wrap; }
+.dx-val { font-size: 14px; font-weight: 600; }
+.dx-ok { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--ok-soft); color: var(--ok); font-size: 13.5px; font-weight: 500; }
+.dx-note { font-size: 11.5px; line-height: 1.5; margin-top: 16px; }
+.all-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; padding: 0; }

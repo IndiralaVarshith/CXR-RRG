@@ -11,7 +11,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { BACKEND_URL, imageUrl } from "../config";
 import { getUser } from "../lib/auth";
-import { label, RISK, riskFrom } from "../lib/pathologies";
+import { label, levelColor, RISK, riskFrom, summarize } from "../lib/pathologies";
 import { downloadReportPDF } from "../lib/pdf";
 import "./history.css";
 
@@ -205,6 +205,17 @@ export default function History() {
                         <span><Calendar size={12} /> {new Date(r.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}</span>
                         {r.ectNumber && <span><Hash size={12} /> {r.ectNumber}</span>}
                       </div>
+                      {(() => {
+                        const p = r.aiReport?.probabilities && summarize(r.aiReport.probabilities).primary;
+                        return p ? (
+                          <div className="h-dx">
+                            <span className="mono faint">Most likely</span>
+                            <b>{label(p[0])}</b>
+                            <span className="mono" style={{ color: levelColor(p[1]) }}>{(p[1] * 100).toFixed(0)}%</span>
+                            <div className="h-dx-bar"><span style={{ width: `${p[1] * 100}%`, background: levelColor(p[1]) }} /></div>
+                          </div>
+                        ) : null;
+                      })()}
                       <div className="finding-chips h-findings">
                         {findings.length ? findings.slice(0, 3).map((f) => <span key={f} className="chip danger">{label(f)}</span>)
                           : risk === "low" ? <span className="chip ok">No acute findings</span>

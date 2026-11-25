@@ -198,8 +198,8 @@ export default function Welcome() {
       <section className="section container">
         <div className="metrics panel">
           {[
-            ["0.895", "AUROC", "normal vs abnormal, 40 held-out Indiana CXRs"],
-            ["90%", "Sensitivity", "abnormal studies flagged (18 / 20)"],
+            ["0.852", "AUROC", "sick vs healthy, tested on 3,695 Indiana X-rays"],
+            ["90%", "Sensitivity", "of patients with disease flagged for review"],
             ["~120ms", "Latency", "per image on a laptop CPU"],
             ["100%", "Local", "no cloud upload of patient data"],
           ].map(([v, t, d], i) => (
