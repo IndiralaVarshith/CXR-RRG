@@ -1,7 +1,9 @@
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShieldCheck, Zap, Eye } from "lucide-react";
 import Logo from "./Logo";
 import "./auth.css";
+import "../pages/legal.css";
 
 export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
@@ -21,7 +23,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
           {children}
           <div className="auth-footer muted">{footer}</div>
         </motion.div>
-        <p className="faint auth-legal">Screening aid only. Not a medical diagnosis.</p>
+        <p className="faint auth-legal">Screening aid only. Not a medical diagnosis. · <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link></p>
       </div>
 
       <div className="auth-visual">

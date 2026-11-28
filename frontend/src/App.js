@@ -11,6 +11,7 @@ import Welcome from "./pages/Welcome";
 import History from "./pages/History";
 import Features from "./pages/Features";
 import Security from "./pages/Security";
+import { Privacy, Terms } from "./pages/Legal";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -28,9 +29,11 @@ function App() {
           <ScrollToTop />
           <Background />
           <Routes>
-            {/* Only sign-in pages are public; everything else requires a valid session */}
+            {/* Only sign-in and legal pages are public; everything else requires a valid session */}
             <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
             <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/" element={<RequireAuth><Welcome /></RequireAuth>} />
             <Route path="/features" element={<RequireAuth><Features /></RequireAuth>} />
             <Route path="/dashboard" element={<RequireAuth><UserDashboard /></RequireAuth>} />
