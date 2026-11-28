@@ -38,9 +38,9 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
             “Every probability comes with a picture of <span className="gradient-text">where</span> the model looked.”
           </blockquote>
           <div className="auth-points">
-            <span><Zap size={15} /> Results in about 120 ms</span>
+            <span><Zap size={15} /> Results in seconds</span>
             <span><Eye size={15} /> Attention heatmaps</span>
-            <span><ShieldCheck size={15} /> Local and private</span>
+            <span><ShieldCheck size={15} /> Reports private to your account</span>
           </div>
         </div>
       </div>

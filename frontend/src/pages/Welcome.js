@@ -43,7 +43,7 @@ function HeroScanner() {
         </motion.div>
       </div>
       <div className="scanner-hud bottom">
-        {[["18", "pathologies"], ["0.12s", "inference"], ["CAM", "explainable"]].map(([v, l]) => (
+        {[["18", "pathologies"], ["5", "models"], ["CAM", "explainable"]].map(([v, l]) => (
           <div key={l}><b>{v}</b><span className="mono faint">{l}</span></div>
         ))}
       </div>
@@ -97,7 +97,7 @@ export default function Welcome() {
             See what the X-ray<br />is <span className="gradient-text">telling you.</span>
           </motion.h1>
           <motion.p className="hero-sub" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.25 }}>
-            CXR-RRG screens a chest radiograph for 18 thoracic pathologies in under a second. It shows
+            CXR-RRG screens a chest radiograph for 18 thoracic pathologies in seconds. It shows
             exactly where it looked and drafts a structured report your radiologist can review, edit and sign off.
           </motion.p>
           <motion.div className="hero-ctas" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.4 }}>
@@ -107,8 +107,8 @@ export default function Welcome() {
             <Link to="/features" className="btn btn-ghost btn-lg">How it works</Link>
           </motion.div>
           <motion.div className="hero-trust" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
-            <span><ShieldCheck size={15} /> Runs on your machine</span>
-            <span><Lock size={15} /> No images leave the clinic</span>
+            <span><ShieldCheck size={15} /> Free and open source</span>
+            <span><Lock size={15} /> Reports private to your account</span>
             <span><Eye size={15} /> Visual explanations</span>
           </motion.div>
         </div>
@@ -168,7 +168,7 @@ export default function Welcome() {
           <ul className="explain-list">
             <li><Layers size={18} /> Per-pathology attention maps for the top findings</li>
             <li><Activity size={18} /> Calibrated probabilities with a clear 50% alert threshold</li>
-            <li><Zap size={18} /> CPU inference in about 120 ms, with no GPU required</li>
+            <li><Zap size={18} /> Runs on ordinary CPUs, with no GPU required</li>
           </ul>
         </motion.div>
         <motion.div {...reveal} transition={{ ...reveal.transition, delay: 0.15 }}>
@@ -201,7 +201,7 @@ export default function Welcome() {
             ["0.869", "Mean AUROC", "per disease, on 1,109 held-out patients"],
             ["91%", "Healthy patients", "correctly left unflagged (was 59%)"],
             ["5", "Expert models", "combined into one calibrated ensemble"],
-            ["100%", "Local", "no cloud upload of patient data"],
+            ["18", "Conditions", "checked on every X-ray, each with a reliability rating"],
           ].map(([v, t, d], i) => (
             <motion.div key={t} className="metric" {...reveal} transition={{ ...reveal.transition, delay: i * 0.08 }}>
               <div className="metric-val gradient-text">{v}</div>
