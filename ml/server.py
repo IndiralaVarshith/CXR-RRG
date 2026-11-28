@@ -18,6 +18,7 @@ POST /predict  (multipart form, field "image")
      }
 GET /health
 """
+import hmac
 import os
 import tempfile
 import time
@@ -33,7 +34,21 @@ ENABLE_VLM = os.environ.get("ENABLE_VLM") == "1"
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
 app.json.sort_keys = False  # keep probabilities ordered high -> low
-CORS(app)
+
+# When deployed, only the website's backend may call /predict: it sends this shared secret.
+ML_API_KEY = os.environ.get("ML_API_KEY", "")
+if ML_API_KEY:
+
+    @app.before_request
+    def require_api_key():
+        if request.path == "/health":
+            return None
+        if not hmac.compare_digest(request.headers.get("X-ML-Key", ""), ML_API_KEY):
+            return jsonify(error="Unauthorized"), 401
+        return None
+
+else:
+    CORS(app)  # local development: the website may call the AI directly
 
 HEADS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "heads", "heads.npz")
 ensemble = None

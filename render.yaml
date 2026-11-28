@@ -1,6 +1,6 @@
 # Render Blueprint: website + login/history API on Render's free plan.
-# The AI runs separately on Modal (deploy/modal/modal_app.py); /ml/* is proxied there.
-# Render dashboard -> New -> Blueprint -> pick this repo. You'll be asked for MONGO_URI.
+# The AI runs separately on Modal (deploy/modal/modal_app.py); /ml/* is proxied there for signed-in users.
+# Render dashboard -> New -> Blueprint -> pick this repo. Values marked sync:false are entered in the dashboard.
 services:
   - type: web
     name: cxr-rrg
@@ -8,22 +8,27 @@ services:
     plan: free
     region: singapore
     buildCommand: >-
-      cd frontend && npm ci --no-audit --no-fund && CI=false GENERATE_SOURCEMAP=false npm run build &&
+      cd frontend && npm ci --no-audit --no-fund &&
+      CI=false GENERATE_SOURCEMAP=false INLINE_RUNTIME_CHUNK=false npm run build &&
       cd ../backend && npm ci --omit=dev --no-audit --no-fund
     startCommand: cd backend && node server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
+      - key: NODE_ENV
+        value: production
       - key: FRONTEND_BUILD
         value: /opt/render/project/src/frontend/build
       - key: ML_PROXY_TARGET
         value: https://indiralavarshith--cxr-rrg-ai-web.us-east.modal.run
-      - key: JWT_SECRET
-        generateValue: true
-      - key: MONGO_URI
+      - key: MONGO_URI # MongoDB Atlas connection string
         sync: false
-      - key: DOCTOR_EMAIL
+      - key: ML_API_KEY # shared secret; must equal the Modal secret "cxr-ml-key"
+        sync: false
+      - key: GOOGLE_CLIENT_ID # optional: enables "Continue with Google"
+        sync: false
+      - key: DOCTOR_EMAIL # optional doctor account (sees all reports)
         sync: false
       - key: DOCTOR_PASSWORD
         sync: false

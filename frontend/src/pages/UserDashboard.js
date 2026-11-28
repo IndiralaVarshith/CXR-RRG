@@ -25,7 +25,7 @@ function useMlHealth() {
   useEffect(() => {
     let alive = true;
     const check = () =>
-      axios.get(`${ML_URL}/health`, { timeout: 4000 })
+      axios.get(`${ML_URL}/health`, { timeout: 15000 })
         .then(() => alive && setStatus("online"))
         .catch(() => alive && setStatus("offline"));
     check();

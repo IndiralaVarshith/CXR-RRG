@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { ArrowLeft, ShieldCheck, Zap, Eye } from "lucide-react";
+import { ShieldCheck, Zap, Eye } from "lucide-react";
 import Logo from "./Logo";
 import "./auth.css";
 
@@ -10,7 +9,6 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
       <div className="auth-form-side">
         <div className="auth-top">
           <Logo />
-          <Link to="/" className="btn btn-ghost btn-sm"><ArrowLeft size={15} /> Home</Link>
         </div>
         <motion.div
           className="auth-card"

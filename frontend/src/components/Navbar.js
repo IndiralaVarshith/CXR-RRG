@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sun, Moon, LogOut, Menu, X, ScanLine, History as HistoryIcon, Cpu, Home } from "lucide-react";
+import { Sun, Moon, LogOut, Menu, X, ScanLine, History as HistoryIcon, Cpu, Home, ShieldCheck } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
-import { getUser, initials, logout } from "../lib/auth";
+import { initials, logout } from "../lib/auth";
+import { useUser } from "./RequireAuth";
 import Logo from "./Logo";
 
 export default function Navbar() {
-  const nav = useNavigate();
   const loc = useLocation();
   const { theme, toggleTheme } = useTheme();
-  const user = getUser();
+  const user = useUser();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -31,14 +31,12 @@ export default function Navbar() {
       ? [
           { to: "/dashboard", label: "Analyze", icon: ScanLine },
           { to: "/history", label: "History", icon: HistoryIcon },
+          { to: "/security", label: "Security", icon: ShieldCheck },
         ]
       : []),
   ];
 
-  const signOut = () => {
-    logout();
-    nav("/");
-  };
+  const signOut = () => logout(); // RequireAuth then sends the user to the login page
 
   const renderLinks = () =>
     links.map(({ to, label, icon: Icon }) => (
@@ -69,10 +67,10 @@ export default function Navbar() {
             </button>
             {user ? (
               <>
-                <div className="user-badge hide-sm">
+                <Link to="/security" className="user-badge hide-sm" title="Account and devices">
                   <span className="avatar">{initials(user.name)}</span>
                   <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</span>
-                </div>
+                </Link>
                 <button className="icon-btn danger hide-sm" onClick={signOut} title="Sign out" aria-label="Sign out">
                   <LogOut size={17} />
                 </button>

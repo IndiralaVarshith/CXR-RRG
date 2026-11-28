@@ -28,3 +28,6 @@ datasets/
 .idea/
 *.log
 cxr-backend-flask
+
+# Local copy of deployment secrets (never commit)
+deploy/render-secrets.txt

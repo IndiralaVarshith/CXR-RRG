@@ -49,5 +49,6 @@
       "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/development/dom-export.js",
       "^axios$": "<rootDir>/node_modules/axios/dist/node/axios.cjs"
     }
-  }
+  },
+  "proxy": "http://127.0.0.1:5000"
 }

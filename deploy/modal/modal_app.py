@@ -38,6 +38,9 @@ app = modal.App("cxr-rrg-ai")
 
 @app.function(
     image=image,
+    # ML_API_KEY: shared secret; only the website backend (which has the same value) may call /predict.
+    #   modal secret create cxr-ml-key ML_API_KEY=<random>
+    secrets=[modal.Secret.from_name("cxr-ml-key")],
     cpu=2.0,
     memory=4096,
     min_containers=0,       # scale to zero: no cost while nobody is using it
