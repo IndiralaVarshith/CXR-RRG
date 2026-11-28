@@ -1,0 +1,29 @@
+# Render Blueprint: website + login/history API on Render's free plan.
+# The AI runs separately on Modal (deploy/modal/modal_app.py); /ml/* is proxied there.
+# Render dashboard -> New -> Blueprint -> pick this repo. You'll be asked for MONGO_URI.
+services:
+  - type: web
+    name: cxr-rrg
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: >-
+      cd frontend && npm ci --no-audit --no-fund && CI=false GENERATE_SOURCEMAP=false npm run build &&
+      cd ../backend && npm ci --omit=dev --no-audit --no-fund
+    startCommand: cd backend && node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: FRONTEND_BUILD
+        value: /opt/render/project/src/frontend/build
+      - key: ML_PROXY_TARGET
+        value: https://indiralavarshith--cxr-rrg-ai-web.us-east.modal.run
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
+      - key: DOCTOR_EMAIL
+        sync: false
+      - key: DOCTOR_PASSWORD
+        sync: false
